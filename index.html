@@ -127,7 +127,7 @@
             <div>
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 掃地工作小幫手
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.4</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.5</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -156,7 +156,7 @@
           </div>
         </div>
 
-        <!-- 導航分頁 (亮白 SVG 向量 Icon) -->
+        <!-- 導航分頁 -->
         <nav class="flex space-x-1 sm:space-x-4 border-t border-teal-500/30 dark:border-slate-800 overflow-x-auto custom-scrollbar">
           <button 
             v-for="tab in tabs" 
@@ -276,12 +276,12 @@
             <!-- 控制按鈕組：[ 🙏 抽一人 ] ➔ [ 🎲 抽全部 ] ➔ [ 🗑️ (純Icon) ] -->
             <div class="w-full md:w-auto flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
               
-              <!-- 🙏 單獨抽一人按鈕 (隨機選取未滿工作) -->
+              <!-- 🙏 單獨抽一人按鈕 (全工作無分一般/辛苦，純隨機大抽籤) -->
               <button 
                 @click="drawSingleMember"
                 :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
                 class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black px-5 py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
-                title="按一次隨機選擇一項未滿工作抽出一名同學"
+                title="按一次在全體未滿工作 (無分一般/辛苦) 中隨機抽出一名同學"
               >
                 <span class="text-xl">🙏</span>
                 <span class="text-base font-bold whitespace-nowrap">抽一人</span>
@@ -366,7 +366,7 @@
               </div>
             </div>
 
-            <!-- 工作卡片網格 (對齊完美優化) -->
+            <!-- 工作卡片網格 -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div 
                 v-for="item in displayTaskCards" 
@@ -385,7 +385,6 @@
                       <span v-if="item.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold text-lg animate-pulse">🔨</span>
                     </span>
                     
-                    <!-- 右上角分類標籤 (精準雙向居中對齊) -->
                     <span 
                       :class="getCategoryBadgeClass(item.category)"
                       class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none"
@@ -420,7 +419,7 @@
                     </template>
                     
                     <template v-else>
-                      <!-- 中籤同學膠囊 (水平垂直雙向置中對齊) -->
+                      <!-- 中籤同學膠囊 (居中對齊) -->
                       <span 
                         v-for="member in item.assignedMembers" 
                         :key="member.id"
@@ -438,7 +437,7 @@
                         <span v-if="member.isManual" class="text-[10px] bg-white/20 px-1 py-0.5 rounded font-normal leading-none">指定</span>
                       </span>
 
-                      <!-- 缺額膠囊 (雙向居中對齊) -->
+                      <!-- 缺額膠囊 -->
                       <span 
                         v-for="emptySlot in Math.max(0, item.requiredCount - item.assignedMembers.length)" 
                         :key="'empty-' + emptySlot"
@@ -1785,7 +1784,7 @@
           return presentMembers.value.filter(m => !m.assignedTaskId).length;
         });
 
-        // 4. 抽籤引擎 (單次抽一人：完全隨機選取一項未滿額的工作，優先普通工作，全滿才抽辛苦工作 🔨)
+        // 4. 抽籤引擎 (單次抽一人：打破一般與辛苦界線，全體未滿工作純隨機大抽籤)
         const isDrawing = ref(false);
         const activeDrawingTaskId = ref(null);
         const avoidRepeat = ref(true);
@@ -1870,7 +1869,7 @@
           return arr;
         };
 
-        // 按一次獨立抽出一名同學 (修訂：隨機選擇一項未滿額工作)
+        // 按一次獨立抽出一名同學 (修訂：打破一般與辛苦界線，全工作無差別純隨機抽)
         const drawSingleMember = async () => {
           if (isDrawing.value) return;
           if (presentMembers.value.length === 0) {
@@ -1910,18 +1909,15 @@
             return;
           }
 
-          // 尋找未滿額的工作項目列表 (優先普通工作，全滿才抽辛苦工作 🔨)
-          let emptyCards = displayTaskCards.value.filter(c => !c.isHeavy && c.assignedMembers.length < c.requiredCount);
-          if (emptyCards.length === 0) {
-            emptyCards = displayTaskCards.value.filter(c => c.isHeavy && c.assignedMembers.length < c.requiredCount);
-          }
+          // 尋找所有未滿額的工作項目 (無分一般與辛苦 🔨，全體隨機抽)
+          const emptyCards = displayTaskCards.value.filter(c => c.assignedMembers.length < c.requiredCount);
 
           if (emptyCards.length === 0) {
             showToast('所有工作項目人數皆已填滿！', '🎉');
             return;
           }
 
-          // 隨機抽選其中一個未滿額的工作
+          // 完全打破類別，純隨機選取一項未滿額的工作
           const targetTaskCard = emptyCards[Math.floor(Math.random() * emptyCards.length)];
 
           isDrawing.value = true;
@@ -2278,7 +2274,7 @@
         };
 
         // 5. 持久化
-        const STORAGE_KEY = 'cleaning_task_helper_data_v7';
+        const STORAGE_KEY = 'cleaning_task_helper_data_v8';
 
         const saveData = () => {
           const data = {
