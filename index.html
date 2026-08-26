@@ -62,7 +62,7 @@
             <div>
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 掃地工作小幫手
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v1.0 (GitHub Pages)</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v1.1.0 (座號功能版)</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的單頁式工作抽籤工具</p>
             </div>
@@ -1120,7 +1120,12 @@
           if (raw) {
             try {
               const data = JSON.parse(raw);
-              if (data.members) members.value = data.members;
+              if (data.members) {
+                members.value = data.members.map((m, idx) => ({
+                  ...m,
+                  seatNo: m.seatNo || (idx + 1)
+                }));
+              }
               if (data.tasks) tasks.value = data.tasks;
               if (data.historyLogs) historyLogs.value = data.historyLogs;
               if (data.currentResults) currentResults.value = data.currentResults;
