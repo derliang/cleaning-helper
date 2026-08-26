@@ -104,7 +104,7 @@
             <div>
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 掃地工作小幫手
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.1</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.2</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -231,27 +231,37 @@
 
         </div>
 
-        <!-- 抽籤控制面板 -->
+        <!-- 抽籤控制面板 (刪除說明文字，新增 🙏 抽一人 按鈕，開抽按鈕，純🗑️垃圾桶) -->
         <div class="bg-gradient-to-br from-slate-900 to-teal-950 dark:from-slate-950 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl pointer-events-none select-none">
             🎲
           </div>
 
           <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div class="space-y-2 text-center md:text-left">
+            <div class="space-y-1 text-center md:text-left">
               <h2 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3 justify-center md:justify-start">
                 <span>準備進行掃地工作抽籤</span>
               </h2>
-              <p class="text-teal-200/80 text-sm max-w-xl">
-                系統將為 {{ unassignedPresentMembersCount }} 位未指定成員，依序抽籤填入工作（普通工作先抽，辛苦工作 🔨 壓軸最後抽）。
-              </p>
               <div v-if="manuallyAssignedMembersCount > 0" class="text-xs text-amber-300 font-semibold pt-1">
-                📌 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，將直接鎖定不參與隨機抽籤。
+                📌 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，直接鎖定不參與隨機抽籤。
               </div>
             </div>
 
-            <!-- 開始抽籤與醒目清除抽籤按鈕區 -->
-            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+            <!-- 控制按鈕組：[ 🙏 抽一人 ] ➔ [ 🎲 開抽 ] ➔ [ 🗑️ (純Icon) ] -->
+            <div class="w-full md:w-auto flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
+              
+              <!-- 🙏 單獨抽一人按鈕 -->
+              <button 
+                @click="drawSingleMember"
+                :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
+                class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black px-5 py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
+                title="按一次獨立抽出一名同學填入下一個缺額"
+              >
+                <span class="text-xl">🙏</span>
+                <span class="text-base font-bold whitespace-nowrap">抽一人</span>
+              </button>
+
+              <!-- 開抽 (全體抽籤按鈕) -->
               <button 
                 @click="startDraw" 
                 :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
@@ -260,27 +270,27 @@
                     ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
                     : 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95'
                 ]"
-                class="px-8 py-4 rounded-2xl text-lg font-bold transition transform flex items-center justify-center gap-3 w-full md:w-auto min-w-[180px]"
+                class="px-8 py-4 rounded-2xl text-lg font-bold transition transform flex items-center justify-center gap-2 min-w-[140px]"
               >
                 <span v-if="isDrawing" class="inline-block animate-spin text-xl">🌀</span>
                 <span v-else class="text-xl">🎲</span>
-                <span>{{ isDrawing ? '抽籤進行中...' : '開始抽籤' }}</span>
+                <span>{{ isDrawing ? '抽籤中...' : '開抽' }}</span>
               </button>
 
+              <!-- 純 🗑️ 垃圾桶按鈕 (無中文字樣) -->
               <button 
                 @click="confirmClearDrawResults"
                 :disabled="isDrawing || (!hasDrawRun && currentResults.length === 0)"
-                class="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold px-5 py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
+                class="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold p-4 rounded-2xl shadow-lg transition flex items-center justify-center hover:scale-105 active:scale-95"
                 title="清除當前抽籤結果"
               >
                 <span class="text-xl">🗑️</span>
-                <span class="text-sm">清除抽籤</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 本班掃地工作分配表 (辛苦工作 🔨 置頂，圖示+代表性名稱精簡按鈕列: 📋 LINE, 🖼️ PNG, 📄 PDF, 📊 Excel, 📝 Word) -->
+        <!-- 本班掃地工作分配表 (5 大官方代表品牌色彩匯出按鈕：💬 LINE | 🖼️ PNG | 📄 PDF | 📊 Excel | 📝 Word) -->
         <div class="space-y-4">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -293,21 +303,21 @@
               </span>
             </h3>
 
-            <!-- 5 大精簡匯出按鈕：📋 LINE | 🖼️ PNG | 📄 PDF | 📊 Excel | 📝 Word -->
+            <!-- 5 大軟體專屬品牌色彩按鈕 -->
             <div v-if="tasks.length > 0" class="flex flex-wrap gap-2">
-              <button @click="copyTextResult" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold px-3 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
-                <span>📋 LINE</span>
+              <button @click="copyTextResult" class="bg-[#06C755] hover:bg-[#05b34c] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                <span>💬 LINE</span>
               </button>
-              <button @click="downloadResultImage" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold px-3 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+              <button @click="downloadResultImage" class="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                 <span>🖼️ PNG</span>
               </button>
-              <button @click="exportPDF" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold px-3 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+              <button @click="exportPDF" class="bg-[#E1251B] hover:bg-[#c91d14] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                 <span>📄 PDF</span>
               </button>
-              <button @click="exportExcel" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold px-3 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+              <button @click="exportExcel" class="bg-[#107C41] hover:bg-[#0e6b37] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                 <span>📊 Excel</span>
               </button>
-              <button @click="exportWord" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold px-3 py-1.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+              <button @click="exportWord" class="bg-[#185ABD] hover:bg-[#13499b] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                 <span>📝 Word</span>
               </button>
             </div>
@@ -330,7 +340,7 @@
               </div>
             </div>
 
-            <!-- 工作卡片網格 (辛苦工作 🔨 置頂優先呈現) -->
+            <!-- 工作卡片網格 (高對比圖示，辛苦工作 🔨 置頂優先呈現) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div 
                 v-for="item in displayTaskCards" 
@@ -358,10 +368,8 @@
                   </div>
                   <p v-if="item.description" class="text-xs text-slate-400 dark:text-slate-400 mb-3">{{ item.description }}</p>
 
-                  <!-- 人員欄位 (動畫效果可由使用者在設定中自訂：拉霸機 / 翻牌 / 閃爍 / 無動畫) -->
                   <div class="flex flex-wrap gap-2 pt-1">
                     <template v-if="isDrawing && activeDrawingTaskId === item.taskId && drawAnimationType !== 'none'">
-                      <!-- 拉霸機滾動或翻牌動畫 -->
                       <span 
                         v-for="n in item.requiredCount" 
                         :key="n"
@@ -402,7 +410,7 @@
               </div>
             </div>
 
-            <!-- 免掃地成員區 -->
+            <!-- 免掃地成員區 (高對比度亮白標籤) -->
             <div v-if="exemptDisplayList.length > 0" class="bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 rounded-2xl p-4 mt-4">
               <div class="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-sm mb-2">
                 <span>✨ 免掃地成員 (共 {{ exemptDisplayList.length }} 人，按座號排序)</span>
@@ -424,7 +432,7 @@
 
       </div>
 
-      <!-- ================= 頁籤 2: 名單管理 (MEMBERS) ================= -->
+      <!-- ================= 頁籤 2: 名單管理 (MEMBERS - 移除內部捲軸，多欄並排一頁呈顯全班) ================= -->
       <div v-show="currentTab === 'members'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -461,7 +469,7 @@
               </button>
             </div>
 
-            <!-- 單獨新增框 (Placeholder 改為：輸入座號姓名如：1陳小花) -->
+            <!-- 單獨新增框 -->
             <div class="border-t border-slate-100 dark:border-slate-700 pt-5 space-y-3">
               <div class="flex gap-2">
                 <input 
@@ -491,7 +499,7 @@
 
           </div>
 
-          <!-- 右側：班級同學名單 (改為單行卡片 Single Line 呈現，指派工作按鈕只留 Icon) -->
+          <!-- 右側：班級同學名單 (全數移除內部捲軸，多欄並排網格，一次性展示全班) -->
           <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <div class="flex items-center justify-between flex-wrap gap-2">
               <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
@@ -502,44 +510,42 @@
               </span>
             </div>
 
-            <!-- 同學單行名單卡片 -->
-            <div v-if="members.length > 0" class="max-h-[540px] overflow-y-auto pr-1 custom-scrollbar space-y-2">
+            <!-- 同學單行名單卡片網格 (無捲軸，動態多欄) -->
+            <div v-if="members.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               <div 
                 v-for="member in members" 
                 :key="member.id"
                 :class="[
                   member.present ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm' : 'bg-slate-100 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 opacity-60'
                 ]"
-                class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition hover:border-teal-400"
+                class="px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 transition hover:border-teal-400"
               >
-                <!-- 左側：勾選開關 + 鋼鐵灰座號 + 姓名 -->
-                <div class="flex items-center gap-2 min-w-0">
+                <div class="flex items-center gap-1.5 min-w-0">
                   <button 
                     @click="toggleAttendance(member)"
                     :class="[member.present ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 border-emerald-300' : 'text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300']"
                     class="w-5 h-5 rounded-md border flex items-center justify-center font-bold text-xs flex-shrink-0 transition"
-                    :title="member.present ? '點擊取消參與(移至免掃地)' : '點擊標記為參與抽籤'"
+                    :title="member.present ? '點擊取消參與' : '點擊標記為參與抽籤'"
                   >
                     {{ member.present ? '✓' : '✗' }}
                   </button>
                   
-                  <span v-if="member.seatNo" class="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600 flex-shrink-0">
+                  <span v-if="member.seatNo" class="text-[10px] font-mono font-bold px-1 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600 flex-shrink-0">
                     #{{ member.seatNo }}
                   </span>
 
-                  <span class="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" :class="{ 'line-through text-slate-400': !member.present }">
+                  <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate" :class="{ 'line-through text-slate-400': !member.present }">
                     {{ member.name }}
                   </span>
                 </div>
 
-                <!-- 右側：📌 指派工作按鈕 (僅留 Icon，無文字) + 刪除按鈕 -->
-                <div class="flex items-center gap-1.5 flex-shrink-0">
+                <div class="flex items-center gap-1 flex-shrink-0">
                   <button 
                     @click="openAssignModal(member)"
                     :class="[
                       member.assignedTaskId ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
                     ]"
-                    class="w-7 h-7 rounded-lg border flex items-center justify-center text-sm transition"
+                    class="w-6 h-6 rounded-md border flex items-center justify-center text-xs transition"
                     :title="member.assignedTaskId ? '已指定：' + getAssignedTaskName(member.assignedTaskId) : '點擊指派工作'"
                   >
                     <span>{{ getAssignedTaskIcon(member.assignedTaskId) || '📌' }}</span>
@@ -547,7 +553,7 @@
 
                   <button 
                     @click="removeMember(member.id)" 
-                    class="text-slate-300 hover:text-rose-500 p-1 transition rounded-lg"
+                    class="text-slate-300 hover:text-rose-500 p-0.5 transition rounded"
                     title="刪除成員"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -565,7 +571,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 3: 掃地工作項目 (TASKS) ================= -->
+      <!-- ================= 頁籤 3: 掃地工作項目 (TASKS - 最左側新增序欄位，說明同列2格間距) ================= -->
       <div v-show="currentTab === 'tasks'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -584,7 +590,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          <!-- 左側：新增工作表單 (刪除說明括號文字，點選分類自動連動右側清單) -->
+          <!-- 左側：新增工作表單 -->
           <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
               <span>➕ 增加掃地工作項目</span>
@@ -627,7 +633,6 @@
                   >
                 </div>
 
-                <!-- 豐富 Icon 庫 25+ 款 -->
                 <div class="flex flex-wrap gap-1.5 mt-2">
                   <button 
                     v-for="icon in presetIcons" 
@@ -693,7 +698,7 @@
             </div>
           </div>
 
-          <!-- 右側：四大分類卡片與列表 (List View) 視圖 (辛苦工作 🔨 置頂呈現) -->
+          <!-- 右側：掃地工作列表 (最左欄新增「序」，說明同列間隔2格) -->
           <div class="lg:col-span-2 space-y-4">
             
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -719,7 +724,6 @@
               </template>
             </div>
 
-            <!-- 掃地工作列表 (List View，辛苦工作 🔨 置頂呈現) -->
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
               <div class="flex items-center justify-between">
                 <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
@@ -733,20 +737,28 @@
                 </span>
               </div>
 
+              <!-- 列表 Table (欄位：序 | 辛苦 | 分類 | 工作名稱與說明 | 需求人數 | 操作) -->
               <div v-if="filteredTasks.length > 0" class="overflow-x-auto">
                 <table class="w-full text-left text-xs sm:text-sm">
                   <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold">
+                      <th class="pb-3 px-2 w-10 text-center">序</th>
                       <th class="pb-3 px-2 w-10 text-center">辛苦</th>
-                      <th class="pb-3 px-2">分類</th>
+                      <th class="pb-3 px-2 w-20">分類</th>
                       <th class="pb-3 px-2">工作名稱與說明</th>
                       <th class="pb-3 px-2 text-center w-28">需求人數</th>
                       <th class="pb-3 px-2 text-right w-16">操作</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    <tr v-for="task in sortedFilteredTasks" :key="task.id" class="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition">
+                    <tr v-for="(task, tIdx) in sortedFilteredTasks" :key="task.id" class="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition">
                       
+                      <!-- 1. 序號 -->
+                      <td class="py-3 px-2 text-center font-mono font-bold text-slate-400">
+                        {{ tIdx + 1 }}
+                      </td>
+
+                      <!-- 2. 辛苦重錘 -->
                       <td class="py-3 px-2 text-center">
                         <button 
                           @click="toggleTaskHeavy(task)"
@@ -762,23 +774,28 @@
                         </button>
                       </td>
 
+                      <!-- 3. 分類 -->
                       <td class="py-3 px-2">
                         <span :class="getCategoryBadgeClass(task.category)" class="font-bold text-[11px] px-2 py-0.5 rounded border">
                           {{ task.category || '教室' }}
                         </span>
                       </td>
 
+                      <!-- 4. 工作名稱 + 說明文字 (同列接在名稱後面，間距 2 格) -->
                       <td class="py-3 px-2">
-                        <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center flex-wrap gap-2">
                           <span class="text-base">{{ task.icon || '🧹' }}</span>
                           <span>{{ task.name }}</span>
-                          <span v-if="task.isHeavy" class="text-amber-500 text-xs font-bold bg-amber-50 dark:bg-amber-950 border border-amber-200 px-1.5 py-0.2 rounded">辛苦</span>
-                        </div>
-                        <div v-if="task.description" class="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5">
-                          {{ task.description }}
+                          <span v-if="task.isHeavy" class="text-amber-500 text-[10px] font-bold bg-amber-50 dark:bg-amber-950 border border-amber-200 px-1 py-0.2 rounded">辛苦</span>
+                          
+                          <!-- 說明文字同列間隔2格 -->
+                          <span v-if="task.description" class="text-xs font-normal text-slate-400 dark:text-slate-400 ml-2 border-l border-slate-200 dark:border-slate-700 pl-2">
+                            {{ task.description }}
+                          </span>
                         </div>
                       </td>
 
+                      <!-- 5. 需求人數 -->
                       <td class="py-3 px-2 text-center">
                         <div class="flex items-center justify-center gap-1.5">
                           <button @click="updateTaskCount(task, -1)" class="w-5 h-5 rounded bg-slate-100 dark:bg-slate-700 border text-slate-600 dark:text-slate-200 font-bold text-xs flex items-center justify-center">-</button>
@@ -787,6 +804,7 @@
                         </div>
                       </td>
 
+                      <!-- 6. 刪除 -->
                       <td class="py-3 px-2 text-right">
                         <button @click="removeTask(task.id)" class="text-slate-300 hover:text-rose-500 p-1 transition" title="刪除">
                           🗑️
@@ -808,7 +826,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 4: 掃地工作歷史記錄 (HISTORY) ================= -->
+      <!-- ================= 頁籤 4: 掃地工作歷史記錄 (HISTORY - 同步標示辛苦工作 🔨) ================= -->
       <div v-show="currentTab === 'history'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -878,6 +896,7 @@
                     <span class="flex items-center gap-1">
                       <span>{{ res.taskIcon || '🧹' }}</span>
                       <span>{{ res.taskName }}</span>
+                      <span v-if="res.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold">🔨</span>
                     </span>
                     <span :class="getCategoryBadgeClass(res.category)" class="text-[10px] font-bold px-1.5 py-0.2 rounded border">
                       {{ res.category || '教室' }}
@@ -920,7 +939,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 5: 系統設定 (SETTINGS) ================= -->
+      <!-- ================= 頁籤 5: 系統設定 (SETTINGS - 時長改為 6s / 12s / 18s) ================= -->
       <div v-show="currentTab === 'settings'" class="space-y-6 max-w-4xl mx-auto">
         <div class="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
           <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -978,18 +997,18 @@
                 </select>
               </div>
 
-              <!-- 全體總抽籤時長 -->
+              <!-- 全體總抽籤時長 (短 6s / 中 12s / 長 18s) -->
               <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⏱️ 全體總抽籤時長</span>
                 <div class="grid grid-cols-3 gap-1.5">
                   <button 
-                    v-for="d in [10, 20, 35]" 
+                    v-for="d in [6, 12, 18]" 
                     :key="d"
                     @click="drawDuration = d"
                     :class="[drawDuration === d ? 'bg-teal-600 text-white font-bold' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200']"
                     class="py-1.5 rounded-lg text-xs transition"
                   >
-                    {{ d === 10 ? '短 10秒' : d === 20 ? '中 20秒' : '長 35秒' }}
+                    {{ d === 6 ? '短 6秒' : d === 12 ? '中 12秒' : '長 18秒' }}
                   </button>
                 </div>
               </div>
@@ -997,13 +1016,12 @@
             </div>
           </div>
 
-          <!-- 自訂匯出範本模式 (🛠️ 自訂範本模式) -->
+          <!-- 自訂匯出範本模式 -->
           <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
             <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🛠️ 自訂匯出範本模式</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400">您可以上傳自訂的 Word 與 Excel 範本檔，匯出時系統將自動套用您的格式。</p>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <!-- 自訂 Word 範本 -->
               <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📝 自訂 Word 匯出範本 (.doc/.html)</span>
                 <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
@@ -1012,7 +1030,6 @@
                 </label>
               </div>
 
-              <!-- 自訂 Excel 範本 -->
               <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📊 自訂 Excel 匯出範本 (.xlsx)</span>
                 <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
@@ -1084,11 +1101,9 @@
       </div>
     </div>
 
-    <!-- 隱藏的 PDF / 圖片與 Word 客製化排版 HTML 模板 (與第一張圖片 100% 一致) -->
+    <!-- 隱藏的 PDF / 圖片與 Word 客製化排版 HTML 模板 -->
     <div id="print-pdf-template" class="hidden">
       <div style="font-family: 'Microsoft JhengHei', sans-serif; padding: 25px; color: #1e293b; background-color: #ffffff;">
-        
-        <!-- 頂部綠藍色標題與綠色飾條 (第一張圖樣式) -->
         <div style="border-left: 6px solid #0f766e; padding-left: 12px; margin-bottom: 15px;">
           <h2 style="color: #0f766e; font-size: 24px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px;">
             <span>🧹 掃地工作分配表</span>
@@ -1098,7 +1113,6 @@
           </p>
         </div>
 
-        <!-- 客製化五欄表格 (序, 工作分類, 掃地工作, 需求人數, 負責人員) -->
         <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; border: 1px solid #cbd5e1;">
           <thead>
             <tr style="background-color: #f0f4f8; color: #1e293b; text-align: left; border-bottom: 1.5px solid #cbd5e1;">
@@ -1125,7 +1139,6 @@
           </tbody>
         </table>
 
-        <!-- 免掃地成員列表 -->
         <div v-if="exemptDisplayList.length > 0" style="margin-top: 20px; font-size: 13px; color: #334155; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
           <strong>✨ 免掃地成員：</strong>
           <span>{{ exemptDisplayListNames }}</span>
@@ -1134,7 +1147,7 @@
       </div>
     </div>
 
-    <!-- 頁尾 Footer (移除多餘字樣) -->
+    <!-- 頁尾 Footer -->
     <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-400 transition-colors mt-auto">
       <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
         <p>🧹 掃地工作小幫手</p>
@@ -1194,7 +1207,6 @@
             .sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
         });
 
-        // 新增單一成員 (提示文字：輸入座號姓名如：1陳小花)
         const addSingleMember = () => {
           const raw = newMemberName.value.trim();
           if (!raw) return;
@@ -1297,7 +1309,7 @@
           }
         };
 
-        // 2. 工作項目與 Icon 庫 (擴充 25+ 款)
+        // 2. 工作項目與 Icon 庫
         const categories = ref(['教室', '值日生', '公區', '廁所']);
         const presetIcons = ref([
           '🧹', '🪣', '🧽', '🧼', '🪠', '🫧', '📋', '📝', 
@@ -1354,7 +1366,6 @@
           newTaskIcon.value = autoDetectIcon(newTaskName.value);
         };
 
-        // 左側選擇分類時，右側清單自動連動切換
         const onSelectFormCategory = (cat) => {
           newTaskCategory.value = cat;
           selectedCategory.value = cat;
@@ -1378,7 +1389,6 @@
           return tasks.value.filter(t => (t.category || '教室') === selectedCategory.value);
         });
 
-        // 工作列表：辛苦工作 🔨 優先置頂呈現
         const sortedFilteredTasks = computed(() => {
           return [...filteredTasks.value].sort((a, b) => {
             if (a.isHeavy && !b.isHeavy) return -1;
@@ -1463,7 +1473,6 @@
           showToast('已載入預設四大分類掃地工作範本！', '💡');
         };
 
-        // 下載 Excel 範本：B, E 欄內建原生試算表下拉選單 (Data Validation)
         const downloadExcelTemplate = () => {
           if (typeof XLSX === 'undefined') {
             showToast('XLSX 匯出模組未載入', '❌');
@@ -1490,7 +1499,6 @@
             { wch: 14 }
           ];
 
-          // 設置 B 欄與 E 欄下拉選單驗證
           ws['!dataValidation'] = [
             { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: '"教室,值日生,公區,廁所"' },
             { sqref: 'E2:E100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
@@ -1603,15 +1611,15 @@
           return presentMembers.value.filter(m => !m.assignedTaskId).length;
         });
 
-        // 4. 抽籤引擎 (大風吹模式 + 辛苦工作 🔨 最後壓軸抽 + 動畫風格自訂)
+        // 4. 抽籤引擎 (單次抽一人 + 全體抽籤 + 即時呈現卡片)
         const isDrawing = ref(false);
         const activeDrawingTaskId = ref(null);
         const avoidRepeat = ref(true);
         const avoidSadness = ref(true);
         const bigBlowMode = ref(true);
         const enableConfetti = ref(true);
-        const drawDuration = ref(20);
-        const drawAnimationType = ref('shuffle'); // 'shuffle' | 'flip' | 'none'
+        const drawDuration = ref(12); // 預設 12 秒 (短6s/中12s/長18s)
+        const drawAnimationType = ref('shuffle');
         const currentResults = ref([]);
         const exemptMembers = ref([]);
         const drawTimestamp = ref('');
@@ -1622,11 +1630,10 @@
         const customWordTemplate = ref(null);
         const customExcelTemplate = ref(null);
 
-        // 抽籤對照表展示卡片 (辛苦工作 🔨 優先置頂呈現)
         const displayTaskCards = computed(() => {
           let list = [];
           if (hasDrawRun.value && currentResults.value.length > 0) {
-            list = [...currentResults.value];
+            list = currentResults.value;
           } else {
             list = tasks.value.map(task => {
               const manualMembers = presentMembers.value
@@ -1641,13 +1648,13 @@
                 isHeavy: task.isHeavy,
                 description: task.description,
                 requiredCount: task.count,
-                assignedMembers: manualMembers
+                assignedMembers: manualMembers,
+                isDrawn: false
               };
             });
           }
 
-          // 置頂呈現辛苦工作 🔨
-          return list.sort((a, b) => {
+          return list.slice().sort((a, b) => {
             if (a.isHeavy && !b.isHeavy) return -1;
             if (!a.isHeavy && b.isHeavy) return 1;
             return 0;
@@ -1689,7 +1696,99 @@
           return arr;
         };
 
-        // 開始抽籤：普通工作先抽，辛苦工作 🔨 留至最後壓軸揭曉！
+        // 按一次獨立抽出一名同學 (🙏 按鈕)
+        const drawSingleMember = async () => {
+          if (isDrawing.value) return;
+          if (presentMembers.value.length === 0) {
+            showToast('尚無應抽籤成員可進行抽籤', '⚠️');
+            return;
+          }
+
+          if (!hasDrawRun.value || currentResults.value.length === 0) {
+            hasDrawRun.value = true;
+            currentResults.value = tasks.value.map(task => {
+              const manualMembers = presentMembers.value
+                .filter(m => m.assignedTaskId === task.id)
+                .map(m => ({ ...m, isManual: true }));
+
+              return {
+                taskId: task.id,
+                taskName: task.name,
+                category: task.category || '教室',
+                taskIcon: task.icon,
+                isHeavy: task.isHeavy,
+                description: task.description,
+                requiredCount: task.count,
+                assignedMembers: manualMembers,
+                isDrawn: false
+              };
+            });
+          }
+
+          // 找出尚未被指派/抽中的成員池
+          const alreadyAssignedIds = new Set();
+          currentResults.value.forEach(res => {
+            res.assignedMembers.forEach(m => alreadyAssignedIds.add(m.id));
+          });
+
+          const availablePool = presentMembers.value.filter(m => !alreadyAssignedIds.has(m.id));
+          if (availablePool.length === 0) {
+            showToast('全體應抽籤成員皆已抽籤完畢！', 'ℹ️');
+            return;
+          }
+
+          // 尋找第一個有缺額的工作
+          const targetTaskCard = displayTaskCards.value.find(c => c.assignedMembers.length < c.requiredCount);
+          if (!targetTaskCard) {
+            showToast('所有工作項目人數皆已填滿！', '🎉');
+            return;
+          }
+
+          isDrawing.value = true;
+          activeDrawingTaskId.value = targetTaskCard.taskId;
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          const lastLog = historyLogs.value[0];
+          const lastHeavyMembersMap = {};
+          const lastTaskMap = {};
+          const lastCategoryMap = {};
+          if (lastLog && lastLog.results) {
+            lastLog.results.forEach(res => {
+              res.assignedMembers.forEach(m => {
+                lastTaskMap[m.id] = res.taskId;
+                lastCategoryMap[m.id] = res.category;
+                if (res.isHeavy) lastHeavyMembersMap[m.id] = true;
+              });
+            });
+          }
+
+          let pool = shuffleArray(availablePool);
+          let candidateIdx = 0;
+          if (avoidSadness.value && targetTaskCard.isHeavy) {
+            const nonHeavyCandidateIdx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
+            if (nonHeavyCandidateIdx !== -1) candidateIdx = nonHeavyCandidateIdx;
+          } else if (bigBlowMode.value && lastLog) {
+            const diffCatIdx = pool.findIndex(m => lastCategoryMap[m.id] !== targetTaskCard.category);
+            if (diffCatIdx !== -1) candidateIdx = diffCatIdx;
+          } else if (avoidRepeat.value && lastLog) {
+            const nonRepeatIdx = pool.findIndex(m => lastTaskMap[m.id] !== targetTaskCard.taskId);
+            if (nonRepeatIdx !== -1) candidateIdx = nonRepeatIdx;
+          }
+
+          const picked = pool[candidateIdx];
+          const resItem = currentResults.value.find(r => r.taskId === targetTaskCard.taskId);
+          if (resItem) {
+            resItem.assignedMembers.push({ ...picked, isManual: false });
+          }
+
+          activeDrawingTaskId.value = null;
+          isDrawing.value = false;
+          drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
+          showToast(`🙏 已為【${targetTaskCard.taskName}】抽中：${picked.seatNo ? '#' + picked.seatNo + ' ' : ''}${picked.name}`, '🎉');
+        };
+
+        // 全體抽籤 (開抽按鈕)
         const startDraw = async () => {
           if (presentMembers.value.length === 0) {
             showToast('尚無應抽籤成員可進行抽籤', '⚠️');
@@ -1704,7 +1803,6 @@
           hasDrawRun.value = true;
           exemptMembers.value = [];
 
-          // 預先建立響應式結果陣列，確保每一項工作抽完後能即時呈現
           currentResults.value = tasks.value.map(task => {
             const manualMembers = presentMembers.value
               .filter(m => m.assignedTaskId === task.id)
@@ -1743,7 +1841,6 @@
             });
           }
 
-          // 排序工作抽籤順序：普通工作先抽，辛苦工作 (🔨) 壓軸最後抽！
           const taskExecutionOrder = [...tasks.value].sort((a, b) => {
             if (!a.isHeavy && b.isHeavy) return -1;
             if (a.isHeavy && !b.isHeavy) return 1;
@@ -1751,7 +1848,7 @@
           });
 
           const totalTasksCount = taskExecutionOrder.length;
-          const delayPerTaskMs = drawAnimationType.value === 'none' ? 50 : Math.max(250, (drawDuration.value * 1000) / totalTasksCount);
+          const delayPerTaskMs = drawAnimationType.value === 'none' ? 50 : Math.max(200, (drawDuration.value * 1000) / totalTasksCount);
 
           for (let index = 0; index < totalTasksCount; index++) {
             const task = taskExecutionOrder[index];
@@ -1787,7 +1884,6 @@
               }
             }
 
-            // 【關鍵 Bug 修復】：當前工作一抽完，立刻更新至 currentResults，即時在卡片畫面上展現結果！
             const targetResItem = currentResults.value.find(r => r.taskId === task.id);
             if (targetResItem) {
               targetResItem.assignedMembers = assigned;
@@ -1805,7 +1901,7 @@
           }
 
           saveToHistory();
-          showToast('抽籤完成！辛苦工作已壓軸揭曉！', '🎉');
+          showToast('全體抽籤完成！辛苦工作已壓軸揭曉！', '🎉');
         };
 
         const confirmClearDrawResults = () => {
@@ -1860,7 +1956,7 @@
           return [...membersList].sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
         };
 
-        // 5 大簡化匯出管道
+        // 匯出按鈕 (💬 LINE, 🖼️ PNG, 📄 PDF, 📊 Excel, 📝 Word)
         const copyTextResult = () => {
           let text = `🧹 【本班掃地工作分配表 - ${drawTimestamp.value || '預備表'}】\n`;
           text += `-------------------------------\n`;
@@ -1897,13 +1993,11 @@
           });
         };
 
-        // PDF 匯出：與 Word 第一張圖片樣式 100% 一致
         const exportPDF = () => {
-          showToast('正在開啟 PDF 列印預覽 (完全與 Word 圖片樣式一致)...', '📄');
+          showToast('正在開啟 PDF 列印預覽...', '📄');
           window.print();
         };
 
-        // Excel 匯出：完全依據第二張圖片欄位 (序, 工作分類, 掃地工作名稱, 需求人數, 辛苦工作, 負責人員)
         const exportExcel = () => {
           if (typeof XLSX === 'undefined') return;
 
@@ -1941,10 +2035,9 @@
           XLSX.utils.book_append_sheet(wb, ws, '掃地工作分配表');
 
           XLSX.writeFile(wb, `本班掃地工作分配表_${new Date().toISOString().slice(0,10)}.xlsx`);
-          showToast('已匯出對應第二張圖片欄位的 Excel (.xlsx)！', '📊');
+          showToast('已匯出 Excel (.xlsx)！', '📊');
         };
 
-        // Word 匯出：與第一張圖片 100% 一致 (綠標題, 五欄表格, 免掃地區塊)
         const exportWord = () => {
           let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
           <head><meta charset='utf-8'><title>掃地工作分配表</title>
@@ -1983,7 +2076,7 @@
           a.download = `掃地工作分配表_${new Date().toISOString().slice(0,10)}.doc`;
           a.click();
           URL.revokeObjectURL(url);
-          showToast('已成功匯出對應第一張圖片樣式的 Word (.doc)！', '📝');
+          showToast('已成功匯出 Word (.doc)！', '📝');
         };
 
         const handleWordTemplateUpload = (e) => {
@@ -2004,8 +2097,8 @@
           showToast(`已成功紀錄自訂 Excel 範本：${file.name}`, '✅');
         };
 
-        // 6. 持久化
-        const STORAGE_KEY = 'cleaning_task_helper_data_v4';
+        // 5. 持久化
+        const STORAGE_KEY = 'cleaning_task_helper_data_v5';
 
         const saveData = () => {
           const data = {
@@ -2198,6 +2291,7 @@
           formattedExportTaskList,
           drawTimestamp,
           hasDrawRun,
+          drawSingleMember,
           startDraw,
           confirmClearDrawResults,
 
