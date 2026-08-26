@@ -127,7 +127,7 @@
             <div>
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 掃地工作小幫手
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.3</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.4</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -156,7 +156,7 @@
           </div>
         </div>
 
-        <!-- 導航分頁 (淘汰暗紫 Emoji，採用亮白 SVG 向量 Icon) -->
+        <!-- 導航分頁 (亮白 SVG 向量 Icon) -->
         <nav class="flex space-x-1 sm:space-x-4 border-t border-teal-500/30 dark:border-slate-800 overflow-x-auto custom-scrollbar">
           <button 
             v-for="tab in tabs" 
@@ -169,7 +169,6 @@
               'px-4 py-2.5 rounded-t-lg text-sm font-medium transition flex items-center gap-2 whitespace-nowrap'
             ]"
           >
-            <!-- 名單管理改用高對比亮白向量圖示 -->
             <svg v-if="tab.id === 'members'" class="w-4 h-4 text-white opacity-90 inline-block" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
             </svg>
@@ -258,7 +257,7 @@
 
         </div>
 
-        <!-- 抽籤控制面板 (開抽改為抽全部，純紅色🗑️垃圾桶) -->
+        <!-- 抽籤控制面板 -->
         <div class="bg-gradient-to-br from-slate-900 to-teal-950 dark:from-slate-950 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl pointer-events-none select-none">
             🎲
@@ -277,12 +276,12 @@
             <!-- 控制按鈕組：[ 🙏 抽一人 ] ➔ [ 🎲 抽全部 ] ➔ [ 🗑️ (純Icon) ] -->
             <div class="w-full md:w-auto flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
               
-              <!-- 🙏 單獨抽一人按鈕 -->
+              <!-- 🙏 單獨抽一人按鈕 (隨機選取未滿工作) -->
               <button 
                 @click="drawSingleMember"
                 :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
                 class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black px-5 py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
-                title="按一次獨立抽出一名同學填入下一個缺額 (普通工作優先抽，辛苦工作最後抽)"
+                title="按一次隨機選擇一項未滿工作抽出一名同學"
               >
                 <span class="text-xl">🙏</span>
                 <span class="text-base font-bold whitespace-nowrap">抽一人</span>
@@ -350,7 +349,7 @@
             </div>
           </div>
 
-          <!-- 可截圖/預覽工作分配網格卡片區 (淘汰暗紫人物 Emoji，改用亮白向量 SVG) -->
+          <!-- 可截圖/預覽工作分配網格卡片區 (膠囊背景與文字 100% 水平垂直雙向居中對齊) -->
           <div id="result-export-card" class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6 transition-colors">
             
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
@@ -361,13 +360,13 @@
                 <p class="text-xs text-slate-400">掃地工作小幫手 • {{ drawTimestamp || '準備抽籤中' }}</p>
               </div>
               <div class="text-right">
-                <span class="text-xs text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-900">
+                <span class="text-xs text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-900 inline-flex items-center justify-center">
                   應抽籤 {{ presentMembers.length }} 人 / 工作需求 {{ totalRequiredSlots }} 位
                 </span>
               </div>
             </div>
 
-            <!-- 工作卡片網格 (辛苦工作 🔨 置頂，多款動畫樣式支援) -->
+            <!-- 工作卡片網格 (對齊完美優化) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div 
                 v-for="item in displayTaskCards" 
@@ -386,9 +385,10 @@
                       <span v-if="item.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold text-lg animate-pulse">🔨</span>
                     </span>
                     
+                    <!-- 右上角分類標籤 (精準雙向居中對齊) -->
                     <span 
                       :class="getCategoryBadgeClass(item.category)"
-                      class="text-xs font-bold px-2 py-0.5 rounded-md border"
+                      class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none"
                     >
                       {{ item.category || '教室' }} ({{ item.requiredCount }}人)
                     </span>
@@ -407,7 +407,7 @@
                           drawAnimationType === 'dice' ? 'animate-dice-spin bg-teal-500 text-white font-black' :
                           'animate-shuffle bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold'
                         ]"
-                        class="text-sm px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm"
+                        class="text-sm px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
                       >
                         {{ 
                           drawAnimationType === 'flip' ? '🎴 揭曉中...' : 
@@ -420,28 +420,29 @@
                     </template>
                     
                     <template v-else>
+                      <!-- 中籤同學膠囊 (水平垂直雙向置中對齊) -->
                       <span 
                         v-for="member in item.assignedMembers" 
                         :key="member.id"
                         :class="[
                           member.isManual ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
                         ]"
-                        class="text-sm font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5"
+                        class="text-sm font-bold px-3 py-2 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
                       >
-                        <!-- 高亮純白向量 SVG 人物 Icon (解決暗紫不清楚問題) -->
                         <span v-if="member.isManual" class="text-xs">📌</span>
                         <svg v-else class="w-3.5 h-3.5 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                         </svg>
 
-                        <span>{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
-                        <span v-if="member.isManual" class="text-[10px] bg-white/20 px-1 py-0.2 rounded font-normal">指定</span>
+                        <span class="inline-block">{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
+                        <span v-if="member.isManual" class="text-[10px] bg-white/20 px-1 py-0.5 rounded font-normal leading-none">指定</span>
                       </span>
 
+                      <!-- 缺額膠囊 (雙向居中對齊) -->
                       <span 
                         v-for="emptySlot in Math.max(0, item.requiredCount - item.assignedMembers.length)" 
                         :key="'empty-' + emptySlot"
-                        class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-3 py-1.5 rounded-xl flex items-center gap-1"
+                        class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-3 py-2 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
                       >
                         <span>❓</span>
                         <span>{{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span>
@@ -461,7 +462,7 @@
                 <span 
                   v-for="member in exemptDisplayList" 
                   :key="member.id"
-                  class="bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm flex items-center gap-1.5"
+                  class="bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm inline-flex items-center justify-center gap-1.5 leading-none"
                 >
                   <span>✨</span>
                   <span>{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
@@ -474,7 +475,7 @@
 
       </div>
 
-      <!-- ================= 頁籤 2: 名單管理 (全數移除內部捲軸，多欄全顯在一頁) ================= -->
+      <!-- ================= 頁籤 2: 名單管理 ================= -->
       <div v-show="currentTab === 'members'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -540,7 +541,7 @@
 
           </div>
 
-          <!-- 右側：班級同學名單 (全數移除內部捲軸，多欄並排網格，一次性展示全班) -->
+          <!-- 右側：班級同學名單 (無捲軸，動態多欄全顯在一頁) -->
           <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <div class="flex items-center justify-between flex-wrap gap-2">
               <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
@@ -551,7 +552,6 @@
               </span>
             </div>
 
-            <!-- 同學單行名單卡片網格 (無捲軸，動態多欄全顯在一頁) -->
             <div v-if="members.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               <div 
                 v-for="member in members" 
@@ -612,7 +612,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 3: 掃地工作項目 (新增序欄位、✏️ 編輯按鈕與紅色垃圾桶、用餐類Icon自動比對) ================= -->
+      <!-- ================= 頁籤 3: 掃地工作項目 ================= -->
       <div v-show="currentTab === 'tasks'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -631,7 +631,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          <!-- 左側：新增工作表單 (包含 🍱 用餐抬飯類圖示) -->
+          <!-- 左側：新增工作表單 -->
           <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
               <span>➕ 增加掃地工作項目</span>
@@ -674,7 +674,6 @@
                   >
                 </div>
 
-                <!-- 豐富 Icon 庫 (含 🍱 🍚 🍲 🥣 🍽️ 用餐類) -->
                 <div class="flex flex-wrap gap-1.5 mt-2">
                   <button 
                     v-for="icon in presetIcons" 
@@ -740,7 +739,7 @@
             </div>
           </div>
 
-          <!-- 右側：掃地工作列表 (新增 ✏️ 編輯按鈕 + 紅色 🗑️ 垃圾桶) -->
+          <!-- 右側：掃地工作列表 -->
           <div class="lg:col-span-2 space-y-4">
             
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -779,7 +778,7 @@
                 </span>
               </div>
 
-              <!-- 列表 Table (新增 ✏️ 編輯按鈕與顯眼紅色垃圾桶) -->
+              <!-- 列表 Table -->
               <div v-if="filteredTasks.length > 0" class="overflow-x-auto">
                 <table class="w-full text-left text-xs sm:text-sm">
                   <thead>
@@ -820,7 +819,6 @@
                         </span>
                       </td>
 
-                      <!-- 工作名稱與說明文字同列間格 2 格 -->
                       <td class="py-3 px-2">
                         <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center flex-wrap gap-2">
                           <span class="text-base">{{ task.icon || '🧹' }}</span>
@@ -841,7 +839,6 @@
                         </div>
                       </td>
 
-                      <!-- 操作欄：✏️ 編輯按鈕 + 顯眼紅色 🗑️ 垃圾桶 -->
                       <td class="py-3 px-2 text-right">
                         <div class="flex items-center justify-end gap-1">
                           <button 
@@ -876,7 +873,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 4: 掃地工作歷史記錄 (同步標示辛苦工作 🔨) ================= -->
+      <!-- ================= 頁籤 4: 掃地工作歷史記錄 ================= -->
       <div v-show="currentTab === 'history'" class="space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -942,7 +939,6 @@
                   :key="res.taskId"
                   class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
                 >
-                  <!-- 歷史紀錄同步標示 🔨 重錘圖示 -->
                   <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
                     <span class="flex items-center gap-1">
                       <span>{{ res.taskIcon || '🧹' }}</span>
@@ -990,7 +986,7 @@
         </div>
       </div>
 
-      <!-- ================= 頁籤 5: 系統設定 (擴充 6 大動畫自訂選項) ================= -->
+      <!-- ================= 頁籤 5: 系統設定 ================= -->
       <div v-show="currentTab === 'settings'" class="space-y-6 max-w-4xl mx-auto">
         <div class="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
           <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -1034,7 +1030,6 @@
                 </div>
               </label>
 
-              <!-- 豐富 6 款抽籤動畫自訂 -->
               <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">🎰 抽籤動畫效果自訂</span>
                 <select v-model="drawAnimationType" class="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200">
@@ -1047,7 +1042,6 @@
                 </select>
               </div>
 
-              <!-- 全體總抽籤時長 (短 6s / 中 12s / 長 18s) -->
               <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⏱️ 全體總抽籤時長</span>
                 <div class="grid grid-cols-3 gap-1.5">
@@ -1151,7 +1145,7 @@
       </div>
     </div>
 
-    <!-- 編輯工作彈窗 (✏️ 編輯按鈕觸發) -->
+    <!-- 編輯工作彈窗 -->
     <div v-if="taskEditModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
@@ -1446,7 +1440,7 @@
           }
         };
 
-        // 2. 工作項目與 Icon 庫 (含 🍱 🍚 🍲 🥣 🍽️ 用餐類)
+        // 2. 工作項目與 Icon 庫
         const categories = ref(['教室', '值日生', '公區', '廁所']);
         const presetIcons = ref([
           '🧹', '🪣', '🧽', '🧼', '🪠', '🫧', 
@@ -1464,7 +1458,6 @@
         const newTaskDesc = ref('');
         const selectedCategory = ref('教室');
 
-        // 編輯彈窗狀態
         const taskEditModal = ref({
           isOpen: false,
           task: null,
@@ -1523,7 +1516,6 @@
           }
         };
 
-        // 自動比對圖示 (新增：餐, 飯, 湯, 菜, 便當, 抬飯, 搬餐桶, 抬湯, 廚餘 -> 🍱 / 🍲)
         const autoDetectIcon = (name) => {
           if (!name) return '🧹';
           if (/餐|飯|湯|菜|便當|抬飯|搬餐桶|抬湯|搬湯|廚餘|膳/.test(name)) {
@@ -1793,7 +1785,7 @@
           return presentMembers.value.filter(m => !m.assignedTaskId).length;
         });
 
-        // 4. 抽籤引擎 (單次抽一人時：普通工作優先抽，辛苦工作 🔨 留至最後才抽)
+        // 4. 抽籤引擎 (單次抽一人：完全隨機選取一項未滿額的工作，優先普通工作，全滿才抽辛苦工作 🔨)
         const isDrawing = ref(false);
         const activeDrawingTaskId = ref(null);
         const avoidRepeat = ref(true);
@@ -1878,7 +1870,7 @@
           return arr;
         };
 
-        // 按一次獨立抽出一名同學 (修訂：普通工作優先抽，辛苦工作 🔨 最後壓軸抽)
+        // 按一次獨立抽出一名同學 (修訂：隨機選擇一項未滿額工作)
         const drawSingleMember = async () => {
           if (isDrawing.value) return;
           if (presentMembers.value.length === 0) {
@@ -1918,17 +1910,19 @@
             return;
           }
 
-          // 優先搜尋普通工作 (!isHeavy) 的缺額
-          let targetTaskCard = displayTaskCards.value.find(c => !c.isHeavy && c.assignedMembers.length < c.requiredCount);
-          // 若普通工作全滿，才搜尋辛苦工作 (isHeavy 🔨)
-          if (!targetTaskCard) {
-            targetTaskCard = displayTaskCards.value.find(c => c.isHeavy && c.assignedMembers.length < c.requiredCount);
+          // 尋找未滿額的工作項目列表 (優先普通工作，全滿才抽辛苦工作 🔨)
+          let emptyCards = displayTaskCards.value.filter(c => !c.isHeavy && c.assignedMembers.length < c.requiredCount);
+          if (emptyCards.length === 0) {
+            emptyCards = displayTaskCards.value.filter(c => c.isHeavy && c.assignedMembers.length < c.requiredCount);
           }
 
-          if (!targetTaskCard) {
+          if (emptyCards.length === 0) {
             showToast('所有工作項目人數皆已填滿！', '🎉');
             return;
           }
+
+          // 隨機抽選其中一個未滿額的工作
+          const targetTaskCard = emptyCards[Math.floor(Math.random() * emptyCards.length)];
 
           isDrawing.value = true;
           activeDrawingTaskId.value = targetTaskCard.taskId;
@@ -2284,7 +2278,7 @@
         };
 
         // 5. 持久化
-        const STORAGE_KEY = 'cleaning_task_helper_data_v6';
+        const STORAGE_KEY = 'cleaning_task_helper_data_v7';
 
         const saveData = () => {
           const data = {
