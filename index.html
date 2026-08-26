@@ -27,6 +27,8 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <!-- html2canvas for image export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- SheetJS for real .xlsx Excel export and import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1398,19 +1400,37 @@
         };
 
         const downloadExcelTemplate = () => {
-          let csv = '\uFEFF';
-          csv += '工作分類,掃地工作名稱,圖示,需求人數,辛苦工作(1是0否),說明\n';
-          tasks.value.forEach(t => {
-            csv += `"${t.category || '教室'}","${t.name}","${t.icon || '🧹'}",${t.count},${t.isHeavy ? 1 : 0},"${t.description || ''}"\n`;
-          });
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `掃地工作項目範本_${new Date().toISOString().slice(0,10)}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-          showToast('已下載 Excel 格式工作範本 (.csv)', '📊');
+          if (typeof XLSX === 'undefined') {
+            showToast('XLSX 匯出模組未載入', '❌');
+            return;
+          }
+          const wsData = [
+            ['工作分類', '掃地工作名稱', '需求人數', '辛苦工作(1是0否)', '圖示', '說明'],
+            ['教室', '掃教室走道', 2, 0, '🧹', '班級教室內地面掃地'],
+            ['教室', '拖教室地面', 2, 0, '🪣', '地板拖乾淨與水桶洗滌'],
+            ['教室', '門窗與玻璃擦拭', 2, 0, '🪟', '門窗框抹布清潔'],
+            ['值日生', '黑板與講台', 1, 0, '📋', '板擦清潔與講台整理'],
+            ['公區', '外掃區 / 走廊', 3, 1, '🍂', '走廊落葉與公用走道'],
+            ['公區', '資源回收與垃圾', 2, 1, '♻️', '垃圾分類與運送至回收場'],
+            ['廁所', '洗手台與鏡子', 1, 0, '💧', '鏡面擦拭與水槽清潔'],
+            ['廁所', '廁所地面刷洗', 2, 1, '🚽', '便器擦拭與地面刷洗']
+          ];
+
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          ws['!cols'] = [
+            { wch: 12 },
+            { wch: 20 },
+            { wch: 12 },
+            { wch: 18 },
+            { wch: 8 },
+            { wch: 30 }
+          ];
+
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '掃地工作範本');
+
+          XLSX.writeFile(wb, `掃地工作項目範本_${new Date().toISOString().slice(0,10)}.xlsx`);
+          showToast('已成功下載 .xlsx 格式的 Excel 工作範本！', '📊');
         };
 
         const importExcelTemplate = (event) => {
@@ -1419,45 +1439,51 @@
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
-              const text = e.target.result;
-              const lines = text.split('\n');
-              const imported = [];
-              lines.forEach((line, idx) => {
-                if (idx === 0 || !line.trim()) return;
-                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
-                if (cols.length >= 2) {
-                  const cat = cols[0].replace(/"/g, '').trim() || '教室';
-                  const name = cols[1].replace(/"/g, '').trim();
-                  const icon = cols[2] ? cols[2].replace(/"/g, '').trim() : autoDetectIcon(name);
-                  const count = cols[3] ? parseInt(cols[3].replace(/"/g, ''), 10) || 1 : 1;
-                  const isHeavy = cols[4] ? cols[4].trim() === '1' || cols[4].trim().toLowerCase() === 'true' : false;
-                  const desc = cols[5] ? cols[5].replace(/"/g, '').trim() : '';
+              if (typeof XLSX === 'undefined') {
+                showToast('XLSX 模組未載入', '❌');
+                return;
+              }
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[firstSheetName];
+              const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                  if (name) {
-                    imported.push({
-                      id: 'imported-' + Date.now() + '-' + idx,
-                      name: name,
-                      category: cat,
-                      count: count,
-                      icon: icon,
-                      isHeavy: isHeavy,
-                      description: desc
-                    });
-                  }
+              const imported = [];
+              jsonRows.forEach((row, idx) => {
+                if (idx === 0 || !row || row.length === 0) return;
+                const cat = row[0] ? String(row[0]).trim() : '教室';
+                const name = row[1] ? String(row[1]).trim() : '';
+                const count = row[2] ? parseInt(row[2], 10) || 1 : 1;
+                const isHeavy = row[3] ? (String(row[3]).trim() === '1' || String(row[3]).includes('是')) : false;
+                const icon = row[4] ? String(row[4]).trim() : autoDetectIcon(name);
+                const desc = row[5] ? String(row[5]).trim() : '';
+
+                if (name) {
+                  imported.push({
+                    id: 'imported-' + Date.now() + '-' + idx,
+                    name: name,
+                    category: cat,
+                    count: count,
+                    icon: icon,
+                    isHeavy: isHeavy,
+                    description: desc
+                  });
                 }
               });
 
               if (imported.length > 0) {
                 tasks.value = imported;
-                showToast(`成功從 Excel 匯入 ${imported.length} 項工作！`, '🎉');
+                showToast(`成功從 Excel (.xlsx) 匯入 ${imported.length} 項工作！`, '🎉');
               } else {
-                showToast('Excel 檔案無有效資料', '⚠️');
+                showToast('Excel 檔案中無有效工作列', '⚠️');
               }
             } catch (err) {
-              showToast('匯入失敗，請確認檔案格式', '❌');
+              console.error(err);
+              showToast('匯入失敗，請確認是否為標準 Excel 檔案', '❌');
             }
           };
-          reader.readAsText(file);
+          reader.readAsArrayBuffer(file);
         };
 
         // 3. 手動指派工作模態 Modal & 即時連動 (Manual Assignment)
@@ -1782,24 +1808,46 @@
         };
 
         const exportExcel = () => {
-          let csv = '\uFEFF';
-          csv += '工作分類,掃地工作名稱,需求人數,辛苦工作,負責人員(座號+姓名)\n';
+          if (typeof XLSX === 'undefined') {
+            showToast('XLSX 匯出模組未載入', '❌');
+            return;
+          }
+
+          const wsData = [
+            ['工作分類', '掃地工作名稱', '需求人數', '辛苦工作', '負責人員(座號+姓名)']
+          ];
+
           displayTaskCards.value.forEach(item => {
             const names = item.assignedMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name + (m.isManual ? '(指定)' : '')).join('、') || '待抽籤';
-            csv += `"${item.category || '教室'}","${item.taskName}",${item.requiredCount},"${item.isHeavy ? '是(🔨)' : '否'}","${names}"\n`;
+            wsData.push([
+              item.category || '教室',
+              item.taskName,
+              item.requiredCount,
+              item.isHeavy ? '是(🔨)' : '否',
+              names
+            ]);
           });
+
           if (exemptDisplayList.value.length > 0) {
             const exemptNames = exemptDisplayList.value.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
-            csv += `"\n免掃地成員","--","--","--","${exemptNames}"\n`;
+            wsData.push([]);
+            wsData.push(['✨ 免掃地成員', '', '', '', exemptNames]);
           }
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `掃地工作分配表_${new Date().toISOString().slice(0,10)}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-          showToast('已匯出 Excel 格式表格 (.csv)', '📊');
+
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          ws['!cols'] = [
+            { wch: 12 },
+            { wch: 20 },
+            { wch: 10 },
+            { wch: 12 },
+            { wch: 40 }
+          ];
+
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '掃地工作分配表');
+
+          XLSX.writeFile(wb, `掃地工作分配表_${new Date().toISOString().slice(0,10)}.xlsx`);
+          showToast('已成功匯出真正的 .xlsx 格式 Excel 試算表！', '📊');
         };
 
         const exportWord = () => {
