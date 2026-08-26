@@ -304,7 +304,7 @@
                         class="bg-emerald-500 text-white text-sm font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5"
                       >
                         <span>👤</span>
-                        <span>{{ member.name }}</span>
+                        <span>{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
                       </span>
                       <span 
                         v-for="emptySlot in (item.requiredCount - item.assignedMembers.length)" 
@@ -332,7 +332,7 @@
                   class="bg-white text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-200 shadow-sm flex items-center gap-1"
                 >
                   <span>✨</span>
-                  <span>{{ member.name }}</span>
+                  <span>{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
                 </span>
               </div>
             </div>
@@ -365,6 +365,9 @@
             </button>
             <button @click="setAllAttendance(false)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
               ❌ 全部請假
+            </button>
+            <button @click="resequenceSeats" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+              🔢 依序重編座號
             </button>
             <button @click="loadSampleMembers" class="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
               💡 載入座號範例名單
@@ -444,6 +447,9 @@
                   >
                     {{ member.present ? '✓' : '✗' }}
                   </button>
+                  <span v-if="member.seatNo" class="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200 flex-shrink-0">
+                    {{ member.seatNo }}號
+                  </span>
                   <span class="text-sm font-semibold text-slate-800 truncate" :class="{ 'line-through text-slate-400': !member.present }">
                     {{ member.name }}
                   </span>
@@ -770,24 +776,30 @@
             showToast(`成員「${name}」已在名單中`, '⚠️');
             return;
           }
-          members.value.push({
+          const maxSeat = members.value.reduce((max, m) => Math.max(max, m.seatNo || 0), 0);
+          const newMember = {
             id: Date.now() + Math.random().toString(36).substring(2, 5),
+            seatNo: maxSeat + 1,
             name: name,
             present: true
-          });
+          };
+          members.value.push(newMember);
           newMemberName.value = '';
-          showToast(`已新增成員：${name}`, '✅');
+          showToast(`已新增成員：${newMember.seatNo}號 ${name}`, '✅');
         };
 
         const addBatchMembers = () => {
           if (!batchMemberInput.value.trim()) return;
           const rawNames = batchMemberInput.value.split(/[\n,，\s]+/);
           let addedCount = 0;
+          let maxSeat = members.value.reduce((max, m) => Math.max(max, m.seatNo || 0), 0);
           rawNames.forEach(raw => {
             const name = raw.trim();
             if (name && !members.value.some(m => m.name === name)) {
+              maxSeat++;
               members.value.push({
                 id: Date.now() + Math.random().toString(36).substring(2, 5),
+                seatNo: maxSeat,
                 name: name,
                 present: true
               });
@@ -795,7 +807,14 @@
             }
           });
           batchMemberInput.value = '';
-          showToast(`成功批次匯入 ${addedCount} 位成員！`, '🎉');
+          showToast(`已成功順序編號並匯入 ${addedCount} 位成員！`, '🎉');
+        };
+
+        const resequenceSeats = () => {
+          members.value.forEach((m, idx) => {
+            m.seatNo = idx + 1;
+          });
+          showToast('已重新將所有成員依序編上 1 ~ N 座號！', '🔢');
         };
 
         const toggleAttendance = (member) => {
@@ -819,16 +838,18 @@
         };
 
         const loadSampleMembers = () => {
-          const sample = [];
-          for (let i = 1; i <= 20; i++) {
-            sample.push({
-              id: 'sample-' + i,
-              name: `座號 ${i} 號`,
-              present: true
-            });
-          }
-          members.value = sample;
-          showToast('已載入 20 位座號範例名單', '💡');
+          const sample = [
+            '王大明', '李小華', '張小美', '陳阿強', '林小龍',
+            '黃小雅', '周傑克', '吳小晴', '蔡阿明', '鄭小婷',
+            '謝大力', '洪小文', '郭小萱', '邱大寶', '曾小怡'
+          ];
+          members.value = sample.map((name, idx) => ({
+            id: 'sample-' + (idx + 1),
+            seatNo: idx + 1,
+            name: name,
+            present: true
+          }));
+          showToast('已載入 15 位包含座號與姓名的範例名單！', '💡');
         };
 
         // 2. 工作項目資料 (Tasks)
@@ -1036,12 +1057,12 @@
           text += `-------------------------------\n`;
           
           currentResults.value.forEach(item => {
-            const names = item.assignedMembers.map(m => m.name).join('、') || '待補抽';
+            const names = item.assignedMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、') || '待補抽';
             text += `${item.taskIcon || '🧹'} ${item.taskName}（${item.assignedMembers.length}/${item.requiredCount}人）：${names}\n`;
           });
 
           if (exemptMembers.value.length > 0) {
-            const exemptNames = exemptMembers.value.map(m => m.name).join('、');
+            const exemptNames = exemptMembers.value.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
             text += `\n🎉 今日輪空免掃成員：${exemptNames}\n`;
           }
 
@@ -1183,6 +1204,7 @@
           batchMemberInput,
           addSingleMember,
           addBatchMembers,
+          resequenceSeats,
           toggleAttendance,
           setAllAttendance,
           removeMember,
