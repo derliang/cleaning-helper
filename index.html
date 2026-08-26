@@ -1702,8 +1702,26 @@
 
           isDrawing.value = true;
           hasDrawRun.value = true;
-          currentResults.value = [];
           exemptMembers.value = [];
+
+          // 預先建立響應式結果陣列，確保每一項工作抽完後能即時呈現
+          currentResults.value = tasks.value.map(task => {
+            const manualMembers = presentMembers.value
+              .filter(m => m.assignedTaskId === task.id)
+              .map(m => ({ ...m, isManual: true }));
+
+            return {
+              taskId: task.id,
+              taskName: task.name,
+              category: task.category || '教室',
+              taskIcon: task.icon,
+              isHeavy: task.isHeavy,
+              description: task.description,
+              requiredCount: task.count,
+              assignedMembers: manualMembers,
+              isDrawn: false
+            };
+          });
 
           const unassignedPool = presentMembers.value.filter(m => !m.assignedTaskId);
           let pool = shuffleArray(unassignedPool);
@@ -1725,14 +1743,13 @@
             });
           }
 
-          // 排序工作抽籤順序：普通工作先抽 (0)，辛苦工作 (1) 壓軸最後抽！
+          // 排序工作抽籤順序：普通工作先抽，辛苦工作 (🔨) 壓軸最後抽！
           const taskExecutionOrder = [...tasks.value].sort((a, b) => {
             if (!a.isHeavy && b.isHeavy) return -1;
             if (a.isHeavy && !b.isHeavy) return 1;
             return 0;
           });
 
-          const resultsMap = {};
           const totalTasksCount = taskExecutionOrder.length;
           const delayPerTaskMs = drawAnimationType.value === 'none' ? 50 : Math.max(250, (drawDuration.value * 1000) / totalTasksCount);
 
@@ -1755,15 +1772,12 @@
                 let candidateIdx = 0;
 
                 if (avoidSadness.value && task.isHeavy) {
-                  // 不悲情模式：優先避免上期辛苦工作者
                   const nonHeavyCandidateIdx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
                   if (nonHeavyCandidateIdx !== -1) candidateIdx = nonHeavyCandidateIdx;
                 } else if (bigBlowMode.value && lastLog) {
-                  // 大風吹模式：優先避免同大分類
                   const diffCatIdx = pool.findIndex(m => lastCategoryMap[m.id] !== task.category);
                   if (diffCatIdx !== -1) candidateIdx = diffCatIdx;
                 } else if (avoidRepeat.value && lastLog) {
-                  // 不重複模式：優先避免同工作
                   const nonRepeatIdx = pool.findIndex(m => lastTaskMap[m.id] !== task.id);
                   if (nonRepeatIdx !== -1) candidateIdx = nonRepeatIdx;
                 }
@@ -1773,23 +1787,16 @@
               }
             }
 
-            resultsMap[task.id] = {
-              taskId: task.id,
-              taskName: task.name,
-              category: task.category || '教室',
-              taskIcon: task.icon,
-              isHeavy: task.isHeavy,
-              description: task.description,
-              requiredCount: task.count,
-              assignedMembers: assigned
-            };
+            // 【關鍵 Bug 修復】：當前工作一抽完，立刻更新至 currentResults，即時在卡片畫面上展現結果！
+            const targetResItem = currentResults.value.find(r => r.taskId === task.id);
+            if (targetResItem) {
+              targetResItem.assignedMembers = assigned;
+              targetResItem.isDrawn = true;
+            }
           }
 
           activeDrawingTaskId.value = null;
           exemptMembers.value = pool;
-
-          // 恢復原本順序組合結果
-          currentResults.value = tasks.value.map(t => resultsMap[t.id]);
           isDrawing.value = false;
           drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
 
