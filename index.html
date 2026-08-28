@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.6</title>
+  <title>掃地工作小幫手 v2.7</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -97,6 +97,10 @@
     .animate-dice-spin {
       animation: diceSpin 0.35s infinite linear;
     }
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
     @media print {
       body * {
         visibility: hidden;
@@ -108,6 +112,7 @@
         position: absolute;
         left: 0;
         top: 0;
+        display: block !important;
         width: 100%;
       }
     }
@@ -127,7 +132,7 @@
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.6</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.7</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -744,6 +749,12 @@
                 >
                   📊 下載Excel範本
                 </button>
+                <button 
+                  @click="downloadCurrentTasksExcel"
+                  class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1"
+                >
+                  💾 匯出目前工作
+                </button>
                 <label class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1 cursor-pointer">
                   📤 匯入Excel
                   <input type="file" accept=".csv, .xlsx, .xls" @change="importExcelTemplate" class="hidden">
@@ -860,6 +871,13 @@
                             title="編輯工作"
                           >
                             ✏️
+                          </button>
+                          <button 
+                            @click="openTaskAssignModal(task)" 
+                            class="text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-slate-700 p-1.5 rounded-lg transition" 
+                            title="指派人員"
+                          >
+                            👤
                           </button>
                           <button 
                             @click="removeTask(task.id)" 
@@ -1106,6 +1124,15 @@
                   type="text"
                   class="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">圖示</label>
+                  <input
+                    v-model="cat.icon"
+                    type="text"
+                    maxlength="4"
+                    class="w-16 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  >
+                </div>
               </div>
             </div>
           </div>
@@ -1225,6 +1252,51 @@
       </div>
     </div>
 
+    <!-- 工作項目指派人員彈窗 -->
+    <div v-if="taskAssignModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+            <span>👤 指派人員</span>
+          </h3>
+          <button @click="closeTaskAssignModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+        </div>
+
+        <div v-if="taskAssignModal.task" class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-3">
+          <span class="min-w-0 truncate">
+            {{ taskAssignModal.task.icon || '🧹' }} {{ taskAssignModal.task.name }}
+          </span>
+          <span class="text-xs bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-800 rounded-full px-2.5 py-1 flex-shrink-0">
+            已指派 {{ getTaskAssignedMembers(taskAssignModal.task.id).length }} / {{ taskAssignModal.task.count }} 人
+          </span>
+        </div>
+
+        <div class="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
+          <button
+            v-for="member in presentMembers"
+            :key="member.id"
+            @click="toggleMemberTaskAssignment(member, taskAssignModal.task.id)"
+            :class="[
+              member.assignedTaskId === taskAssignModal.task.id
+                ? 'bg-teal-600 text-white border-teal-700 font-bold'
+                : member.assignedTaskId
+                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+            ]"
+            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border"
+          >
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="font-mono bg-white/20 px-1.5 py-0.5 rounded">#{{ member.seatNo || '-' }}</span>
+              <span class="truncate">{{ member.name }}</span>
+            </span>
+            <span class="text-[10px] opacity-80 flex-shrink-0">
+              {{ member.assignedTaskId === taskAssignModal.task.id ? '已指派' : member.assignedTaskId ? getAssignedTaskName(member.assignedTaskId) : '可指派' }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 編輯工作彈窗 -->
     <div v-if="taskEditModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
@@ -1317,43 +1389,43 @@
 
     <!-- 隱藏的 PDF / 圖片與 Word 客製化排版 HTML 模板 -->
     <div id="print-pdf-template" class="hidden">
-      <div style="font-family: 'Microsoft JhengHei', sans-serif; padding: 25px; color: #1e293b; background-color: #ffffff;">
-        <div style="border-left: 6px solid #0f766e; padding-left: 12px; margin-bottom: 15px;">
-          <h2 style="color: #0f766e; font-size: 24px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px;">
+      <div style="font-family: 'Microsoft JhengHei', sans-serif; width: 277mm; min-height: 190mm; box-sizing: border-box; padding: 6mm; color: #1e293b; background-color: #ffffff;">
+        <div style="border-left: 5px solid #0f766e; padding-left: 10px; margin-bottom: 8px;">
+          <h2 style="color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px;">
             <span>🧹 掃地工作分配表</span>
           </h2>
-          <p style="font-size: 13px; color: #475569; margin-top: 6px; margin-bottom: 0;">
+          <p style="font-size: 11px; color: #475569; margin-top: 4px; margin-bottom: 0;">
             抽籤時間：{{ drawTimestamp || '預備狀態' }}
           </p>
         </div>
 
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; border: 1px solid #cbd5e1;">
+        <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 8px; font-size: 10.5px; border: 1px solid #cbd5e1;">
           <thead>
             <tr style="background-color: #f0f4f8; color: #1e293b; text-align: left; border-bottom: 1.5px solid #cbd5e1;">
-              <th style="padding: 10px 12px; width: 45px; text-align: center; border-right: 1px solid #cbd5e1;">序</th>
-              <th style="padding: 10px 12px; width: 90px; border-right: 1px solid #cbd5e1;">工作分類</th>
-              <th style="padding: 10px 12px; border-right: 1px solid #cbd5e1;">掃地工作</th>
-              <th style="padding: 10px 12px; width: 90px; border-right: 1px solid #cbd5e1;">需求人數</th>
-              <th style="padding: 10px 12px;">負責人員</th>
+              <th style="padding: 5px 6px; width: 34px; text-align: center; border-right: 1px solid #cbd5e1;">序</th>
+              <th style="padding: 5px 6px; width: 76px; border-right: 1px solid #cbd5e1;">工作分類</th>
+              <th style="padding: 5px 6px; width: 210px; border-right: 1px solid #cbd5e1;">掃地工作</th>
+              <th style="padding: 5px 6px; width: 62px; border-right: 1px solid #cbd5e1;">需求</th>
+              <th style="padding: 5px 6px;">負責人員</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, idx) in formattedExportTaskList" :key="item.taskId" style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 10px 12px; text-align: center; border-right: 1px solid #cbd5e1;">{{ idx + 1 }}</td>
-              <td style="padding: 10px 12px; border-right: 1px solid #cbd5e1;">{{ item.category || '教室' }}</td>
-              <td style="padding: 10px 12px; border-right: 1px solid #cbd5e1;">
+              <td style="padding: 5px 6px; text-align: center; border-right: 1px solid #cbd5e1;">{{ idx + 1 }}</td>
+              <td style="padding: 5px 6px; border-right: 1px solid #cbd5e1;">{{ item.category || '教室' }}</td>
+              <td style="padding: 5px 6px; border-right: 1px solid #cbd5e1;">
                 <span>{{ item.taskIcon || '🧹' }} {{ item.taskName }}</span>
                 <span v-if="item.isHeavy" style="color: #b45309; font-weight: bold; margin-left: 4px;">(🔨 辛苦)</span>
               </td>
-              <td style="padding: 10px 12px; border-right: 1px solid #cbd5e1;">{{ item.requiredCount }} 人</td>
-              <td style="padding: 10px 12px; font-weight: bold; color: #0f172a;">
+              <td style="padding: 5px 6px; border-right: 1px solid #cbd5e1;">{{ item.requiredCount }} 人</td>
+              <td style="padding: 5px 6px; font-weight: bold; color: #0f172a;">
                 {{ item.assignedMembersNames || '待抽籤' }}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div v-if="exemptDisplayList.length > 0" style="margin-top: 20px; font-size: 13px; color: #334155; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div v-if="exemptDisplayList.length > 0" style="margin-top: 8px; font-size: 10.5px; color: #334155; background-color: #f8fafc; padding: 7px 9px; border-radius: 6px; border: 1px solid #e2e8f0;">
           <strong>✨ 免掃地成員：</strong>
           <span>{{ exemptDisplayListNames }}</span>
         </div>
@@ -1552,6 +1624,7 @@
         const categories = computed(() => categorySettings.value.filter(cat => cat.visible).map(cat => cat.name));
         const allCategoryNames = computed(() => categorySettings.value.map(cat => cat.name));
         const getFallbackCategory = () => categories.value[0] || categorySettings.value[0]?.name || '教室';
+        const getCategoryNameById = (id) => categorySettings.value.find(cat => cat.id === id)?.name || DEFAULT_CATEGORY_SETTINGS.find(cat => cat.id === id)?.name || '教室';
         const isCategoryVisible = (categoryName) => {
           const cat = categorySettings.value.find(item => item.name === (categoryName || '教室'));
           return cat ? cat.visible : true;
@@ -1560,6 +1633,16 @@
           const idx = categorySettings.value.findIndex(item => item.name === (categoryName || '教室'));
           return idx === -1 ? 999 : idx;
         };
+        const getPresetTasks = () => [
+          { id: 'preset-1', name: '掃教室走道', category: getCategoryNameById('classroom'), count: 2, icon: '🧹', isHeavy: false, description: '班級教室內地面掃地' },
+          { id: 'preset-2', name: '拖教室地面', category: getCategoryNameById('classroom'), count: 2, icon: '🪣', isHeavy: false, description: '地板拖乾淨與水桶洗滌' },
+          { id: 'preset-3', name: '門窗與玻璃擦拭', category: getCategoryNameById('classroom'), count: 2, icon: '🪟', isHeavy: false, description: '門窗框抹布清潔' },
+          { id: 'preset-4', name: '黑板與講台', category: getCategoryNameById('duty'), count: 1, icon: '📋', isHeavy: false, description: '板擦清潔與講台整理' },
+          { id: 'preset-5', name: '外掃區 / 走廊', category: getCategoryNameById('public'), count: 3, icon: '🍂', isHeavy: true, description: '走廊落葉與公用走道' },
+          { id: 'preset-6', name: '資源回收與垃圾', category: getCategoryNameById('public'), count: 2, icon: '♻️', isHeavy: true, description: '垃圾分類與運送至回收場' },
+          { id: 'preset-7', name: '洗手台與鏡子', category: getCategoryNameById('restroom'), count: 1, icon: '💧', isHeavy: false, description: '鏡面擦拭與水槽清潔' },
+          { id: 'preset-8', name: '廁所地面刷洗', category: getCategoryNameById('restroom'), count: 2, icon: '🚽', isHeavy: true, description: '便器擦拭與地面刷洗' }
+        ];
         const presetIcons = ref([
           '🧹', '🪣', '🧽', '🧼', '🪠', '🫧', 
           '🍱', '🍚', '🍲', '🥣', '🍽️', 
@@ -1817,16 +1900,7 @@
         };
 
         const loadPresetTasks = (silent = false) => {
-          tasks.value = [
-            { id: 'preset-1', name: '掃教室走道', category: '教室', count: 2, icon: '🧹', isHeavy: false, description: '班級教室內地面掃地' },
-            { id: 'preset-2', name: '拖教室地面', category: '教室', count: 2, icon: '🪣', isHeavy: false, description: '地板拖乾淨與水桶洗滌' },
-            { id: 'preset-3', name: '門窗與玻璃擦拭', category: '教室', count: 2, icon: '🪟', isHeavy: false, description: '門窗框抹布清潔' },
-            { id: 'preset-4', name: '黑板與講台', category: '值日生', count: 1, icon: '📋', isHeavy: false, description: '板擦清潔與講台整理' },
-            { id: 'preset-5', name: '外掃區 / 走廊', category: '公區', count: 3, icon: '🍂', isHeavy: true, description: '走廊落葉與公用走道' },
-            { id: 'preset-6', name: '資源回收與垃圾', category: '公區', count: 2, icon: '♻️', isHeavy: true, description: '垃圾分類與運送至回收場' },
-            { id: 'preset-7', name: '洗手台與鏡子', category: '廁所', count: 1, icon: '💧', isHeavy: false, description: '鏡面擦拭與水槽清潔' },
-            { id: 'preset-8', name: '廁所地面刷洗', category: '廁所', count: 2, icon: '🚽', isHeavy: true, description: '便器擦拭與地面刷洗' },
-          ];
+          tasks.value = getPresetTasks();
           if (!silent) showToast('已載入預設四大分類掃地工作範本！', '💡');
         };
 
@@ -1835,16 +1909,18 @@
             showToast('XLSX 匯出模組未載入', '❌');
             return;
           }
+          const templateTasks = getPresetTasks().filter(task => isCategoryVisible(task.category));
           const wsData = [
             ['序', '工作分類', '掃地工作名稱', '需求人數', '圖示', '辛苦工作', '說明 / 注意事項'],
-            [1, '教室', '掃教室走道', 2, '🧹', '否', '班級教室內地面掃地'],
-            [2, '教室', '拖教室地面', 2, '🪣', '否', '地板拖乾淨與水桶洗滌'],
-            [3, '教室', '門窗與玻璃擦拭', 2, '🪟', '否', '門窗框抹布清潔'],
-            [4, '值日生', '黑板與講台', 1, '📋', '否', '板擦清潔與講台整理'],
-            [5, '公區', '外掃區 / 走廊', 3, '🍂', '是(🔨)', '走廊落葉與公用走道'],
-            [6, '公區', '資源回收與垃圾', 2, '♻️', '是(🔨)', '垃圾分類與運送至回收場'],
-            [7, '廁所', '洗手台與鏡子', 1, '💧', '否', '鏡面擦拭與水槽清潔'],
-            [8, '廁所', '廁所地面刷洗', 2, '🚽', '是(🔨)', '便器擦拭與地面刷洗']
+            ...templateTasks.map((task, idx) => [
+              idx + 1,
+              task.category,
+              task.name,
+              task.count,
+              task.icon,
+              task.isHeavy ? '是(🔨)' : '否',
+              task.description
+            ])
           ];
 
           const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -1871,6 +1947,44 @@
           showToast('已成功下載欄位完整對齊新增表單的 Excel 範本！', '📊');
         };
 
+        const downloadCurrentTasksExcel = () => {
+          if (typeof XLSX === 'undefined') {
+            showToast('XLSX 匯出模組未載入', '❌');
+            return;
+          }
+          const wsData = [
+            ['序', '工作分類', '掃地工作名稱', '需求人數', '圖示', '辛苦工作', '說明 / 注意事項'],
+            ...tasks.value.map((task, idx) => [
+              idx + 1,
+              task.category || getFallbackCategory(),
+              task.name,
+              task.count || 1,
+              task.icon || autoDetectIcon(task.name),
+              task.isHeavy ? '是(🔨)' : '否',
+              task.description || ''
+            ])
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          ws['!cols'] = [
+            { wch: 8 },
+            { wch: 14 },
+            { wch: 22 },
+            { wch: 12 },
+            { wch: 10 },
+            { wch: 14 },
+            { wch: 30 }
+          ];
+          const categoryValidation = allCategoryNames.value.join(',');
+          ws['!dataValidation'] = [
+            { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: `"${categoryValidation}"` },
+            { sqref: 'F2:F100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
+          ];
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '目前掃地工作');
+          XLSX.writeFile(wb, `目前掃地工作項目_${new Date().toISOString().slice(0,10)}.xlsx`);
+          showToast('已匯出目前所有掃地工作，可編輯後再匯入', '💾');
+        };
+
         const importExcelTemplate = (event) => {
           const file = event.target.files[0];
           if (!file) return;
@@ -1888,7 +2002,7 @@
               const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
               const imported = [];
-              const validCategories = categories.value;
+              const validCategories = allCategoryNames.value;
               const fallbackCategory = getFallbackCategory();
               const header = jsonRows[0] || [];
               const hasIconColumn = String(header[4] || '').includes('圖示');
@@ -1939,6 +2053,10 @@
           isOpen: false,
           member: null
         });
+        const taskAssignModal = ref({
+          isOpen: false,
+          task: null
+        });
 
         const openAssignModal = (member) => {
           manualAssignModal.value = {
@@ -1951,9 +2069,39 @@
           manualAssignModal.value.isOpen = false;
         };
 
+        const openTaskAssignModal = (task) => {
+          taskAssignModal.value = {
+            isOpen: true,
+            task
+          };
+        };
+
+        const closeTaskAssignModal = () => {
+          taskAssignModal.value.isOpen = false;
+        };
+
+        const getTaskAssignedMembers = (taskId) => {
+          return presentMembers.value.filter(member => member.assignedTaskId === taskId);
+        };
+
+        const toggleMemberTaskAssignment = (member, taskId) => {
+          if (!member || !taskId) return;
+          if (member.assignedTaskId === taskId) {
+            member.assignedTaskId = null;
+            syncManualAssignmentsToResults();
+            showToast(`已取消「${member.name}」的工作指派`, '🔄');
+            return;
+          }
+          const task = tasks.value.find(item => item.id === taskId);
+          member.assignedTaskId = taskId;
+          syncManualAssignmentsToResults();
+          showToast(`已將「${member.name}」指定至【${task?.name || '掃地工作'}】`, '🧹');
+        };
+
         const assignTaskToMember = (taskId) => {
           if (manualAssignModal.value.member) {
             manualAssignModal.value.member.assignedTaskId = taskId;
+            syncManualAssignmentsToResults();
             const mName = manualAssignModal.value.member.name;
             const tName = getAssignedTaskName(taskId);
             showToast(taskId ? `已將「${mName}」指定至【${tName}】` : `已取消「${mName}」的手動指定`, '🧹');
@@ -2059,6 +2207,30 @@
             return 0;
           });
         });
+
+        const syncManualAssignmentsToResults = () => {
+          if (!hasDrawRun.value || currentResults.value.length === 0) return;
+          const manualAssignments = new Map();
+          presentMembers.value.forEach(member => {
+            if (!member.assignedTaskId) return;
+            if (!manualAssignments.has(member.assignedTaskId)) manualAssignments.set(member.assignedTaskId, []);
+            manualAssignments.get(member.assignedTaskId).push({ ...member, isManual: true });
+          });
+          currentResults.value.forEach(result => {
+            const manualIds = new Set();
+            manualAssignments.forEach(memberList => {
+              memberList.forEach(member => manualIds.add(member.id));
+            });
+            const keptRandomMembers = (result.assignedMembers || [])
+              .filter(member => !manualIds.has(member.id))
+              .map(member => ({ ...member, isManual: false }));
+            result.assignedMembers = [
+              ...(manualAssignments.get(result.taskId) || []),
+              ...keptRandomMembers
+            ];
+          });
+          exemptMembers.value = exemptMembers.value.filter(member => !member.assignedTaskId);
+        };
 
         const exemptDisplayList = computed(() => {
           const list = [...nonPresentMembers.value];
@@ -2413,15 +2585,33 @@
         };
 
         const downloadResultImage = () => {
-          const target = document.getElementById('result-export-card');
+          const source = document.getElementById('print-pdf-template');
+          const target = source ? source.firstElementChild.cloneNode(true) : document.getElementById('result-export-card');
           if (!target || typeof html2canvas !== 'function') return;
+          const wrapper = document.createElement('div');
+          wrapper.style.position = 'fixed';
+          wrapper.style.left = '-10000px';
+          wrapper.style.top = '0';
+          wrapper.style.width = '1123px';
+          wrapper.style.height = '794px';
+          wrapper.style.background = '#ffffff';
+          wrapper.style.overflow = 'hidden';
+          target.style.width = '1123px';
+          target.style.minHeight = '794px';
+          target.style.padding = '24px';
+          wrapper.appendChild(target);
+          document.body.appendChild(wrapper);
           showToast('正在生成高畫質圖片...', '⏳');
-          html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
+          html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
             const link = document.createElement('a');
             link.download = `本班掃地工作分配表_${new Date().toISOString().slice(0,10)}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
+            document.body.removeChild(wrapper);
             showToast('圖片下載成功！', '🖼️');
+          }).catch(() => {
+            document.body.removeChild(wrapper);
+            showToast('圖片下載失敗', '❌');
           });
         };
 
@@ -2474,21 +2664,22 @@
           let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
           <head><meta charset='utf-8'><title>掃地工作分配表</title>
           <style>
-            body { font-family: 'Microsoft JhengHei', sans-serif; padding: 25px; color: #1e293b; }
-            .header-box { border-left: 6px solid #0f766e; padding-left: 12px; margin-bottom: 15px; }
-            h2 { color: #0f766e; font-size: 22px; margin: 0; }
-            .sub { font-size: 13px; color: #475569; margin-top: 4px; }
-            table { border-collapse: collapse; width: 100%; margin-top: 15px; font-size: 14px; border: 1px solid #cbd5e1; }
-            th, td { border: 1px solid #cbd5e1; padding: 9px 12px; text-align: left; }
+            @page { size: A4 landscape; margin: 8mm; }
+            body { font-family: 'Microsoft JhengHei', sans-serif; padding: 0; color: #1e293b; }
+            .header-box { border-left: 5px solid #0f766e; padding-left: 10px; margin-bottom: 8px; }
+            h2 { color: #0f766e; font-size: 20px; margin: 0; }
+            .sub { font-size: 11px; color: #475569; margin-top: 4px; }
+            table { border-collapse: collapse; table-layout: fixed; width: 100%; margin-top: 8px; font-size: 10.5px; border: 1px solid #cbd5e1; }
+            th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; }
             th { background-color: #f0f4f8; font-weight: bold; }
-            .exempt-box { margin-top: 18px; font-size: 13px; background-color: #f8fafc; padding: 10px 14px; border: 1px solid #e2e8f0; }
+            .exempt-box { margin-top: 8px; font-size: 10.5px; background-color: #f8fafc; padding: 7px 9px; border: 1px solid #e2e8f0; }
           </style></head><body>`;
 
           if (customWordTemplate.value) {
             html += customWordTemplate.value;
           } else {
             html += `<div class="header-box"><h2>🧹 掃地工作分配表</h2><p class="sub">抽籤時間：${drawTimestamp.value || '預備狀態'}</p></div>`;
-            html += `<table><thead><tr><th style="width:40px;text-align:center;">序</th><th style="width:90px;">工作分類</th><th>掃地工作</th><th style="width:90px;">需求人數</th><th>負責人員</th></tr></thead><tbody>`;
+            html += `<table><thead><tr><th style="width:34px;text-align:center;">序</th><th style="width:76px;">工作分類</th><th style="width:210px;">掃地工作</th><th style="width:62px;">需求</th><th>負責人員</th></tr></thead><tbody>`;
             
             formattedExportTaskList.value.forEach((item, idx) => {
               const heavyStr = item.isHeavy ? ' (🔨 辛苦)' : '';
@@ -2754,12 +2945,18 @@
           clearAllTasks,
           loadPresetTasks,
           downloadExcelTemplate,
+          downloadCurrentTasksExcel,
           importExcelTemplate,
 
           // Modal & Assign
           manualAssignModal,
+          taskAssignModal,
           openAssignModal,
           closeAssignModal,
+          openTaskAssignModal,
+          closeTaskAssignModal,
+          getTaskAssignedMembers,
+          toggleMemberTaskAssignment,
           assignTaskToMember,
           getAssignedTaskName,
           getAssignedTaskIcon,
