@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.5</title>
+  <title>掃地工作小幫手 v2.6</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -127,7 +127,7 @@
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.5</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.6</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -648,7 +648,7 @@
             <div class="space-y-3">
               <div>
                 <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作分類</label>
-                <div class="grid grid-cols-4 gap-1.5">
+                <div v-if="categories.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   <button 
                     v-for="cat in categories" 
                     :key="cat"
@@ -662,6 +662,9 @@
                     {{ cat }}
                   </button>
                 </div>
+                <p v-else class="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
+                  請先到系統設定勾選至少一個工作類別。
+                </p>
               </div>
 
               <div>
@@ -727,6 +730,8 @@
 
               <button 
                 @click="addNewTask"
+                :disabled="categories.length === 0"
+                :class="categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
                 class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition"
               >
                 增加掃地工作項目
@@ -903,7 +908,7 @@
                 :class="[historySortMode === 'CATEGORY' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
                 class="px-2.5 py-1 rounded-lg transition"
               >
-                🏷️ 依屬性 (教室➔值日➔公區➔廁所)
+                🏷️ 依類別
               </button>
             </div>
 
@@ -1068,10 +1073,62 @@
             </div>
           </div>
 
+          <!-- 工作類別設定 -->
+          <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
+            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🏷️ 工作類別設定</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div
+                v-for="cat in categorySettings"
+                :key="cat.id"
+                class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3"
+              >
+                <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
+                  <span class="flex items-center gap-2 font-bold text-sm text-slate-800 dark:text-slate-100">
+                    <input
+                      type="checkbox"
+                      v-model="cat.visible"
+                      @change="ensureSelectedCategory"
+                      class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4"
+                    >
+                    <span>{{ cat.icon }}</span>
+                    <span>顯示此類別</span>
+                  </span>
+                  <span
+                    :class="cat.visible ? 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'"
+                    class="text-[11px] font-bold px-2 py-0.5 rounded-full border"
+                  >
+                    {{ cat.visible ? '已顯示' : '已隱藏' }}
+                  </span>
+                </label>
+                <input
+                  :value="cat.name"
+                  @change="renameCategory(cat, $event.target.value)"
+                  type="text"
+                  class="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+              </div>
+            </div>
+          </div>
+
           <!-- 自訂匯出範本模式 -->
           <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
             <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🛠️ 自訂匯出範本模式</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400">您可以上傳自訂的 Word 與 Excel 範本檔，匯出時系統將自動套用您的格式。</p>
+
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">匯出時的排序</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <label
+                  v-for="option in exportSortOptions"
+                  :key="option.value"
+                  :class="exportSortMode === option.value ? 'bg-teal-600 text-white border-teal-700 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'"
+                  class="flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer text-xs font-bold transition"
+                >
+                  <input type="radio" v-model="exportSortMode" :value="option.value" class="text-teal-600 focus:ring-teal-500">
+                  <span>{{ option.label }}</span>
+                </label>
+              </div>
+            </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
@@ -1149,7 +1206,7 @@
           </button>
 
           <button 
-            v-for="task in tasks" 
+            v-for="task in activeTasks" 
             :key="task.id"
             @click="assignTaskToMember(task.id)"
             :class="[
@@ -1181,7 +1238,7 @@
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作分類</label>
-            <div class="grid grid-cols-4 gap-1.5">
+            <div v-if="categories.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button 
                 v-for="cat in categories" 
                 :key="cat"
@@ -1195,6 +1252,9 @@
                 {{ cat }}
               </button>
             </div>
+            <p v-else class="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
+              請先到系統設定勾選至少一個工作類別。
+            </p>
           </div>
 
           <div>
@@ -1469,7 +1529,37 @@
         };
 
         // 2. 工作項目與 Icon 庫
-        const categories = ref(['教室', '值日生', '公區', '廁所']);
+        const DEFAULT_CATEGORY_SETTINGS = [
+          { id: 'classroom', name: '教室', visible: true, icon: '🏫' },
+          { id: 'restroom', name: '廁所', visible: true, icon: '🚽' },
+          { id: 'duty', name: '值日生', visible: true, icon: '📋' },
+          { id: 'public', name: '公區', visible: true, icon: '🏛️' },
+          { id: 'other', name: '其他', visible: false, icon: '📁' }
+        ];
+        const cloneDefaultCategorySettings = () => DEFAULT_CATEGORY_SETTINGS.map(cat => ({ ...cat }));
+        const normalizeCategorySettings = (savedSettings) => {
+          if (!Array.isArray(savedSettings)) return cloneDefaultCategorySettings();
+          return DEFAULT_CATEGORY_SETTINGS.map(defaultCat => {
+            const saved = savedSettings.find(item => item.id === defaultCat.id);
+            return {
+              ...defaultCat,
+              name: saved?.name ? String(saved.name).trim() : defaultCat.name,
+              visible: saved?.visible === undefined ? defaultCat.visible : !!saved.visible
+            };
+          });
+        };
+        const categorySettings = ref(cloneDefaultCategorySettings());
+        const categories = computed(() => categorySettings.value.filter(cat => cat.visible).map(cat => cat.name));
+        const allCategoryNames = computed(() => categorySettings.value.map(cat => cat.name));
+        const getFallbackCategory = () => categories.value[0] || categorySettings.value[0]?.name || '教室';
+        const isCategoryVisible = (categoryName) => {
+          const cat = categorySettings.value.find(item => item.name === (categoryName || '教室'));
+          return cat ? cat.visible : true;
+        };
+        const getCategoryOrder = (categoryName) => {
+          const idx = categorySettings.value.findIndex(item => item.name === (categoryName || '教室'));
+          return idx === -1 ? 999 : idx;
+        };
         const presetIcons = ref([
           '🧹', '🪣', '🧽', '🧼', '🪠', '🫧', 
           '🍱', '🍚', '🍲', '🥣', '🍽️', 
@@ -1493,6 +1583,11 @@
           drawDuration: 12,
           drawAnimationType: 'shuffle'
         };
+        const exportSortOptions = [
+          { value: 'SEQUENCE', label: '依序號' },
+          { value: 'CATEGORY', label: '依類別' },
+          { value: 'SEAT', label: '依座號' }
+        ];
 
         const taskEditModal = ref({
           isOpen: false,
@@ -1510,6 +1605,50 @@
 
         const closeEditTaskModal = () => {
           taskEditModal.value.isOpen = false;
+        };
+
+        const ensureSelectedCategory = () => {
+          if (!categories.value.includes(selectedCategory.value)) {
+            selectedCategory.value = getFallbackCategory();
+          }
+          if (!categories.value.includes(newTaskCategory.value)) {
+            newTaskCategory.value = getFallbackCategory();
+          }
+          if (taskEditModal.value.isOpen && !categories.value.includes(taskEditModal.value.form.category)) {
+            taskEditModal.value.form.category = getFallbackCategory();
+          }
+        };
+
+        const renameCategory = (cat, rawName) => {
+          const oldName = cat.name;
+          const newName = String(rawName || '').trim();
+          if (!newName) {
+            showToast('類別名稱不可為空', '⚠️');
+            return;
+          }
+          const duplicated = categorySettings.value.some(item => item.id !== cat.id && item.name === newName);
+          if (duplicated) {
+            showToast('類別名稱不可重複', '⚠️');
+            return;
+          }
+          if (oldName === newName) return;
+
+          cat.name = newName;
+          tasks.value.forEach(task => {
+            if ((task.category || '教室') === oldName) task.category = newName;
+          });
+          currentResults.value.forEach(result => {
+            if ((result.category || '教室') === oldName) result.category = newName;
+          });
+          historyLogs.value.forEach(log => {
+            (log.results || []).forEach(result => {
+              if ((result.category || '教室') === oldName) result.category = newName;
+            });
+          });
+          if (selectedCategory.value === oldName) selectedCategory.value = newName;
+          if (newTaskCategory.value === oldName) newTaskCategory.value = newName;
+          if (taskEditModal.value.form.category === oldName) taskEditModal.value.form.category = newName;
+          showToast(`已將類別改為「${newName}」`, '🏷️');
         };
 
         const saveEditTask = () => {
@@ -1533,21 +1672,23 @@
         };
 
         const getCategoryBadgeClass = (categoryName) => {
-          switch (categoryName) {
-            case '教室': return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
-            case '值日生': return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-            case '公區': return 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800';
-            case '廁所': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800';
+          const categoryId = categorySettings.value.find(item => item.name === (categoryName || '教室'))?.id;
+          switch (categoryId) {
+            case 'classroom': return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
+            case 'duty': return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
+            case 'public': return 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800';
+            case 'restroom': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800';
             default: return 'bg-slate-100 text-slate-800 border-slate-300';
           }
         };
 
         const getCategoryActiveClass = (categoryName) => {
-          switch (categoryName) {
-            case '教室': return 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400 font-bold';
-            case '值日生': return 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-400 font-bold';
-            case '公區': return 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-400 font-bold';
-            case '廁所': return 'bg-sky-600 text-white border-sky-700 shadow-md ring-2 ring-sky-400 font-bold';
+          const categoryId = categorySettings.value.find(item => item.name === (categoryName || '教室'))?.id;
+          switch (categoryId) {
+            case 'classroom': return 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400 font-bold';
+            case 'duty': return 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-400 font-bold';
+            case 'public': return 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-400 font-bold';
+            case 'restroom': return 'bg-sky-600 text-white border-sky-700 shadow-md ring-2 ring-sky-400 font-bold';
             default: return 'bg-teal-600 text-white font-bold';
           }
         };
@@ -1581,13 +1722,15 @@
           selectedCategory.value = cat;
         };
 
+        const activeTasks = computed(() => tasks.value.filter(task => isCategoryVisible(task.category || '教室')));
+        const activeTaskIds = computed(() => new Set(activeTasks.value.map(task => task.id)));
+
         const categoryStats = computed(() => {
-          const categoryIconsMap = { '教室': '🏫', '值日生': '📋', '公區': '🏛️', '廁所': '🚽' };
-          return categories.value.map(cat => {
-            const catTasks = tasks.value.filter(t => (t.category || '教室') === cat);
+          return categorySettings.value.filter(cat => cat.visible).map(cat => {
+            const catTasks = tasks.value.filter(t => (t.category || '教室') === cat.name);
             return {
-              name: cat,
-              icon: categoryIconsMap[cat] || '📁',
+              name: cat.name,
+              icon: cat.icon || '📁',
               taskCount: catTasks.length,
               peopleCount: catTasks.reduce((sum, t) => sum + (t.count || 0), 0)
             };
@@ -1595,8 +1738,8 @@
         });
 
         const filteredTasks = computed(() => {
-          if (selectedCategory.value === 'ALL') return tasks.value;
-          return tasks.value.filter(t => (t.category || '教室') === selectedCategory.value);
+          if (selectedCategory.value === 'ALL') return activeTasks.value;
+          return activeTasks.value.filter(t => (t.category || '教室') === selectedCategory.value);
         });
 
         const sortedFilteredTasks = computed(() => {
@@ -1607,7 +1750,7 @@
           });
         });
 
-        const totalRequiredSlots = computed(() => tasks.value.reduce((sum, t) => sum + (t.count || 0), 0));
+        const totalRequiredSlots = computed(() => activeTasks.value.reduce((sum, t) => sum + (t.count || 0), 0));
 
         const matchStatus = computed(() => {
           const presentCount = presentMembers.value.length;
@@ -1629,7 +1772,11 @@
             showToast('請輸入工作名稱', '⚠️');
             return;
           }
-          const cat = newTaskCategory.value || '教室';
+          if (categories.value.length === 0) {
+            showToast('請先到系統設定勾選至少一個工作類別', '⚠️');
+            return;
+          }
+          const cat = categories.value.includes(newTaskCategory.value) ? newTaskCategory.value : getFallbackCategory();
           tasks.value.push({
             id: 'task-' + Date.now(),
             name: name,
@@ -1711,8 +1858,9 @@
             { wch: 30 }
           ];
 
+          const categoryValidation = (categories.value.length > 0 ? categories.value : allCategoryNames.value).join(',');
           ws['!dataValidation'] = [
-            { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: '"教室,值日生,公區,廁所"' },
+            { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: `"${categoryValidation}"` },
             { sqref: 'F2:F100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
           ];
 
@@ -1741,6 +1889,7 @@
 
               const imported = [];
               const validCategories = categories.value;
+              const fallbackCategory = getFallbackCategory();
               const header = jsonRows[0] || [];
               const hasIconColumn = String(header[4] || '').includes('圖示');
               jsonRows.forEach((row, idx) => {
@@ -1748,7 +1897,7 @@
                 const hasAnyValue = row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
                 if (!hasAnyValue) return;
                 const catRaw = row[1] ? String(row[1]).trim() : '';
-                const cat = validCategories.includes(catRaw) ? catRaw : '教室';
+                const cat = validCategories.includes(catRaw) ? catRaw : fallbackCategory;
                 const rawName = row[2] ? String(row[2]).trim() : '';
                 const name = rawName || `未命名工作 ${imported.length + 1}`;
                 const count = row[3] ? parseInt(row[3], 10) || 1 : 1;
@@ -1877,19 +2026,21 @@
         const expandedHistoryIds = ref([]);
         const customWordTemplate = ref(null);
         const customExcelTemplate = ref(null);
+        const exportSortMode = ref('SEQUENCE');
 
         const displayTaskCards = computed(() => {
           let list = [];
           if (hasDrawRun.value && currentResults.value.length > 0) {
-            list = currentResults.value;
+            list = currentResults.value.filter(item => isCategoryVisible(item.category || '教室'));
           } else {
-            list = tasks.value.map(task => {
+            list = activeTasks.value.map(task => {
               const manualMembers = presentMembers.value
                 .filter(m => m.assignedTaskId === task.id)
                 .map(m => ({ ...m, isManual: true }));
 
               return {
                 taskId: task.id,
+                originalIndex: tasks.value.findIndex(item => item.id === task.id),
                 taskName: task.name,
                 category: task.category || '教室',
                 taskIcon: task.icon,
@@ -1926,13 +2077,42 @@
           return exemptDisplayList.value.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
         });
 
+        const getFirstAssignedSeatNo = (item) => {
+          const seatNumbers = (item.assignedMembers || [])
+            .map(member => parseInt(member.seatNo, 10))
+            .filter(num => !Number.isNaN(num));
+          return seatNumbers.length > 0 ? Math.min(...seatNumbers) : 9999;
+        };
+
+        const getOriginalTaskIndex = (item, fallbackIndex) => {
+          if (Number.isInteger(item.originalIndex) && item.originalIndex >= 0) return item.originalIndex;
+          const taskIndex = tasks.value.findIndex(task => task.id === item.taskId);
+          return taskIndex >= 0 ? taskIndex : fallbackIndex;
+        };
+
+        const sortTaskCardsForExport = (list) => {
+          return list.slice().sort((a, b) => {
+            if (exportSortMode.value === 'CATEGORY') {
+              const catDiff = getCategoryOrder(a.category) - getCategoryOrder(b.category);
+              if (catDiff !== 0) return catDiff;
+              return (a.originalIndex || 0) - (b.originalIndex || 0);
+            }
+            if (exportSortMode.value === 'SEAT') {
+              const seatDiff = getFirstAssignedSeatNo(a) - getFirstAssignedSeatNo(b);
+              if (seatDiff !== 0) return seatDiff;
+              return (a.originalIndex || 0) - (b.originalIndex || 0);
+            }
+            return (a.originalIndex || 0) - (b.originalIndex || 0);
+          });
+        };
+
         const formattedExportTaskList = computed(() => {
-          const catOrder = { '教室': 1, '值日生': 2, '公區': 3, '廁所': 4 };
-          const list = displayTaskCards.value.map(item => ({
+          const list = displayTaskCards.value.map((item, index) => ({
             ...item,
+            originalIndex: getOriginalTaskIndex(item, index),
             assignedMembersNames: item.assignedMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name + (m.isManual ? '(指定)' : '')).join('、')
           }));
-          return list.sort((a, b) => (catOrder[a.category] || 9) - (catOrder[b.category] || 9));
+          return sortTaskCardsForExport(list);
         });
 
         const shuffleArray = (array) => {
@@ -1954,13 +2134,14 @@
 
           if (!hasDrawRun.value || currentResults.value.length === 0) {
             hasDrawRun.value = true;
-            currentResults.value = tasks.value.map(task => {
+            currentResults.value = activeTasks.value.map(task => {
               const manualMembers = presentMembers.value
                 .filter(m => m.assignedTaskId === task.id)
                 .map(m => ({ ...m, isManual: true }));
 
               return {
                 taskId: task.id,
+                originalIndex: tasks.value.findIndex(item => item.id === task.id),
                 taskName: task.name,
                 category: task.category || '教室',
                 taskIcon: task.icon,
@@ -2045,7 +2226,7 @@
             showToast('尚無應抽籤成員可進行抽籤', '⚠️');
             return;
           }
-          if (tasks.value.length === 0) {
+          if (activeTasks.value.length === 0) {
             showToast('請先新增至少一項掃地工作項目', '⚠️');
             return;
           }
@@ -2054,13 +2235,14 @@
           hasDrawRun.value = true;
           exemptMembers.value = [];
 
-          currentResults.value = tasks.value.map(task => {
+          currentResults.value = activeTasks.value.map(task => {
             const manualMembers = presentMembers.value
               .filter(m => m.assignedTaskId === task.id)
               .map(m => ({ ...m, isManual: true }));
 
             return {
               taskId: task.id,
+              originalIndex: tasks.value.findIndex(item => item.id === task.id),
               taskName: task.name,
               category: task.category || '教室',
               taskIcon: task.icon,
@@ -2072,7 +2254,7 @@
             };
           });
 
-          const unassignedPool = presentMembers.value.filter(m => !m.assignedTaskId);
+          const unassignedPool = presentMembers.value.filter(m => !activeTaskIds.value.has(m.assignedTaskId));
           let pool = shuffleArray(unassignedPool);
 
           const lastLog = historyLogs.value[0];
@@ -2092,7 +2274,7 @@
             });
           }
 
-          const taskExecutionOrder = [...tasks.value].sort((a, b) => {
+          const taskExecutionOrder = [...activeTasks.value].sort((a, b) => {
             if (!a.isHeavy && b.isHeavy) return -1;
             if (a.isHeavy && !b.isHeavy) return 1;
             return 0;
@@ -2196,8 +2378,7 @@
           if (!results) return [];
           const list = [...results];
           if (historySortMode.value === 'CATEGORY') {
-            const catOrder = { '教室': 1, '值日生': 2, '公區': 3, '廁所': 4 };
-            list.sort((a, b) => (catOrder[a.category] || 9) - (catOrder[b.category] || 9));
+            list.sort((a, b) => getCategoryOrder(a.category) - getCategoryOrder(b.category));
           }
           return list;
         };
@@ -2212,7 +2393,7 @@
           let text = `🧹 【本班掃地工作分配表 - ${drawTimestamp.value || '預備表'}】\n`;
           text += `-------------------------------\n`;
           
-          displayTaskCards.value.forEach(item => {
+          formattedExportTaskList.value.forEach(item => {
             const names = item.assignedMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name + (m.isManual ? '(指定)' : '')).join('、') || '待抽籤';
             const heavyMark = item.isHeavy ? ' [🔨辛苦]' : '';
             text += `${item.taskIcon || '🧹'} [${item.category || '教室'}] ${item.taskName}${heavyMark}（${item.assignedMembers.length}/${item.requiredCount}人）：${names}\n`;
@@ -2368,7 +2549,9 @@
             drawDuration: drawDuration.value,
             drawAnimationType: drawAnimationType.value,
             customWordTemplate: customWordTemplate.value,
-            customExcelTemplate: customExcelTemplate.value
+            customExcelTemplate: customExcelTemplate.value,
+            categorySettings: categorySettings.value,
+            exportSortMode: exportSortMode.value
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         };
@@ -2397,6 +2580,9 @@
               if (data.drawAnimationType !== undefined) drawAnimationType.value = data.drawAnimationType;
               if (data.customWordTemplate !== undefined) customWordTemplate.value = data.customWordTemplate;
               if (data.customExcelTemplate !== undefined) customExcelTemplate.value = data.customExcelTemplate;
+              if (data.categorySettings !== undefined) categorySettings.value = normalizeCategorySettings(data.categorySettings);
+              if (data.exportSortMode !== undefined) exportSortMode.value = data.exportSortMode;
+              ensureSelectedCategory();
             } catch (e) {
               console.error(e);
             }
@@ -2409,10 +2595,11 @@
               present: true,
               assignedTaskId: null
             }));
+            ensureSelectedCategory();
           }
         };
 
-        watch([members, tasks, historyLogs, currentResults, avoidRepeat, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode], () => {
+        watch([members, tasks, historyLogs, currentResults, avoidRepeat, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode, categorySettings, exportSortMode, customWordTemplate, customExcelTemplate], () => {
           saveData();
         }, { deep: true });
 
@@ -2428,6 +2615,9 @@
             drawTimestamp.value = '';
             customWordTemplate.value = null;
             customExcelTemplate.value = null;
+            categorySettings.value = cloneDefaultCategorySettings();
+            exportSortMode.value = 'SEQUENCE';
+            ensureSelectedCategory();
             showToast('已完成全部重設，所有資料已清空', '🗑️');
           }
         };
@@ -2455,12 +2645,22 @@
             drawAnimationType.value = DEFAULT_DRAW_SETTINGS.drawAnimationType;
             customWordTemplate.value = null;
             customExcelTemplate.value = null;
+            categorySettings.value = cloneDefaultCategorySettings();
+            exportSortMode.value = 'SEQUENCE';
+            ensureSelectedCategory();
             showToast('已恢復程式預設值', '🔄');
           }
         };
 
         const exportBackup = () => {
-          const data = { members: members.value, tasks: tasks.value, historyLogs: historyLogs.value, exportedAt: new Date().toISOString() };
+          const data = {
+            members: members.value,
+            tasks: tasks.value,
+            historyLogs: historyLogs.value,
+            categorySettings: categorySettings.value,
+            exportSortMode: exportSortMode.value,
+            exportedAt: new Date().toISOString()
+          };
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -2481,6 +2681,9 @@
               if (data.members) members.value = data.members;
               if (data.tasks) tasks.value = data.tasks;
               if (data.historyLogs) historyLogs.value = data.historyLogs;
+              if (data.categorySettings !== undefined) categorySettings.value = normalizeCategorySettings(data.categorySettings);
+              if (data.exportSortMode !== undefined) exportSortMode.value = data.exportSortMode;
+              ensureSelectedCategory();
               showToast('成功匯入備份資料！', '🎉');
             } catch (err) {
               showToast('備份檔案格式不正確', '❌');
@@ -2516,9 +2719,12 @@
           clearAllMembers,
 
           // Tasks
+          categorySettings,
           categories,
+          allCategoryNames,
           presetIcons,
           tasks,
+          activeTasks,
           newTaskName,
           newTaskCategory,
           newTaskCount,
@@ -2532,6 +2738,8 @@
           saveEditTask,
           getCategoryBadgeClass,
           getCategoryActiveClass,
+          ensureSelectedCategory,
+          renameCategory,
           categoryStats,
           filteredTasks,
           sortedFilteredTasks,
@@ -2592,6 +2800,8 @@
           clearHistory,
 
           // Exports
+          exportSortOptions,
+          exportSortMode,
           copyTextResult,
           downloadResultImage,
           exportPDF,
