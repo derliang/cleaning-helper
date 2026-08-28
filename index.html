@@ -392,63 +392,71 @@
                     </span>
                 </div>
 
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
-                  <p class="text-xs text-slate-400 dark:text-slate-400 truncate min-w-0 flex-1">{{ item.description || '尚未填寫說明' }}</p>
+                <p class="text-xs text-slate-400 dark:text-slate-400 truncate min-w-0">{{ item.description || '尚未填寫說明' }}</p>
 
-                  <div class="flex flex-wrap gap-1.5 sm:justify-end flex-shrink-0">
+                <div class="flex flex-col gap-1.5">
                     <template v-if="isDrawing && activeDrawingTaskId === item.taskId && drawAnimationType !== 'none'">
-                      <span 
-                        v-for="n in item.requiredCount" 
-                        :key="n"
-                        :class="[
-                          drawAnimationType === 'flip' ? 'animate-card-flip bg-amber-400 text-slate-950 font-black' :
-                          drawAnimationType === 'glow' ? 'animate-glow bg-amber-500 text-white font-black' :
-                          drawAnimationType === 'bounce' ? 'animate-bounce-in bg-amber-400 text-slate-950 font-black' :
-                          drawAnimationType === 'dice' ? 'animate-dice-spin bg-teal-500 text-white font-black' :
-                          'animate-shuffle bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold'
-                        ]"
-                        class="text-xs px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
+                      <div
+                        v-for="(row, rowIndex) in chunkPlaceholders(item.requiredCount)"
+                        :key="'drawing-row-' + rowIndex"
+                        class="flex flex-wrap gap-1.5"
                       >
-                        {{ 
-                          drawAnimationType === 'flip' ? '🎴 揭曉中...' : 
-                          drawAnimationType === 'glow' ? '✨ 揭曉中...' :
-                          drawAnimationType === 'bounce' ? '🎈 揭曉中...' :
-                          drawAnimationType === 'dice' ? '🎲 揭曉中...' :
-                          '🎰 滾動中...' 
-                        }}
-                      </span>
+                        <span 
+                          v-for="n in row" 
+                          :key="n"
+                          :class="[
+                            drawAnimationType === 'flip' ? 'animate-card-flip bg-amber-400 text-slate-950 font-black' :
+                            drawAnimationType === 'glow' ? 'animate-glow bg-amber-500 text-white font-black' :
+                            drawAnimationType === 'bounce' ? 'animate-bounce-in bg-amber-400 text-slate-950 font-black' :
+                            drawAnimationType === 'dice' ? 'animate-dice-spin bg-teal-500 text-white font-black' :
+                            'animate-shuffle bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold'
+                          ]"
+                          class="text-xs px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
+                        >
+                          {{ 
+                            drawAnimationType === 'flip' ? '🎴 揭曉中...' : 
+                            drawAnimationType === 'glow' ? '✨ 揭曉中...' :
+                            drawAnimationType === 'bounce' ? '🎈 揭曉中...' :
+                            drawAnimationType === 'dice' ? '🎲 揭曉中...' :
+                            '🎰 滾動中...' 
+                          }}
+                        </span>
+                      </div>
                     </template>
                     
                     <template v-else>
-                      <!-- 中籤同學膠囊 (居中對齊) -->
-                      <span 
-                        v-for="member in item.assignedMembers" 
-                        :key="member.id"
-                        :class="[
-                          member.isManual ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
-                        ]"
-                        class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
+                      <div
+                        v-for="(memberRow, rowIndex) in chunkTaskMembers(item)"
+                        :key="'member-row-' + rowIndex"
+                        class="flex flex-wrap gap-1.5"
                       >
-                        <span v-if="member.isManual" class="text-xs">🧹</span>
-                        <svg v-else class="w-3.5 h-3.5 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                        </svg>
+                        <template v-for="slot in memberRow" :key="slot.key">
+                          <span 
+                            v-if="slot.member"
+                            :class="[
+                              slot.member.isManual ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
+                            ]"
+                            class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
+                          >
+                            <span v-if="slot.member.isManual" class="text-xs">🧹</span>
+                            <svg v-else class="w-3.5 h-3.5 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                            </svg>
 
-                        <span class="inline-block">{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
-                        <span v-if="member.isManual" class="text-[10px] bg-white/20 px-1 py-0.5 rounded font-normal leading-none">指定</span>
-                      </span>
+                            <span class="inline-block">{{ slot.member.seatNo ? slot.member.seatNo + '號 ' : '' }}{{ slot.member.name }}</span>
+                            <span v-if="slot.member.isManual" class="text-[10px] bg-white/20 px-1 py-0.5 rounded font-normal leading-none">指定</span>
+                          </span>
 
-                      <!-- 缺額膠囊 -->
-                      <span 
-                        v-for="emptySlot in Math.max(0, item.requiredCount - item.assignedMembers.length)" 
-                        :key="'empty-' + emptySlot"
-                        class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-2.5 py-1.5 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
-                      >
-                        <span>❓</span>
-                        <span>{{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span>
-                      </span>
+                          <span 
+                            v-else
+                            class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-2.5 py-1.5 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
+                          >
+                            <span>❓</span>
+                            <span>{{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span>
+                          </span>
+                        </template>
+                      </div>
                     </template>
-                  </div>
                 </div>
             </div>
             </div>
@@ -1681,15 +1689,15 @@
             return;
           }
           const wsData = [
-            ['序', '工作分類', '掃地工作名稱', '需求人數', '辛苦工作'],
-            [1, '教室', '掃教室走道', 2, '否'],
-            [2, '教室', '拖教室地面', 2, '否'],
-            [3, '教室', '門窗與玻璃擦拭', 2, '否'],
-            [4, '值日生', '黑板與講台', 1, '否'],
-            [5, '公區', '外掃區 / 走廊', 3, '是(🔨)'],
-            [6, '公區', '資源回收與垃圾', 2, '是(🔨)'],
-            [7, '廁所', '洗手台與鏡子', 1, '否'],
-            [8, '廁所', '廁所地面刷洗', 2, '是(🔨)']
+            ['序', '工作分類', '掃地工作名稱', '需求人數', '圖示', '辛苦工作', '說明 / 注意事項'],
+            [1, '教室', '掃教室走道', 2, '🧹', '否', '班級教室內地面掃地'],
+            [2, '教室', '拖教室地面', 2, '🪣', '否', '地板拖乾淨與水桶洗滌'],
+            [3, '教室', '門窗與玻璃擦拭', 2, '🪟', '否', '門窗框抹布清潔'],
+            [4, '值日生', '黑板與講台', 1, '📋', '否', '板擦清潔與講台整理'],
+            [5, '公區', '外掃區 / 走廊', 3, '🍂', '是(🔨)', '走廊落葉與公用走道'],
+            [6, '公區', '資源回收與垃圾', 2, '♻️', '是(🔨)', '垃圾分類與運送至回收場'],
+            [7, '廁所', '洗手台與鏡子', 1, '💧', '否', '鏡面擦拭與水槽清潔'],
+            [8, '廁所', '廁所地面刷洗', 2, '🚽', '是(🔨)', '便器擦拭與地面刷洗']
           ];
 
           const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -1698,19 +1706,21 @@
             { wch: 14 },
             { wch: 22 },
             { wch: 12 },
-            { wch: 14 }
+            { wch: 10 },
+            { wch: 14 },
+            { wch: 30 }
           ];
 
           ws['!dataValidation'] = [
             { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: '"教室,值日生,公區,廁所"' },
-            { sqref: 'E2:E100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
+            { sqref: 'F2:F100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
           ];
 
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '掃地工作範本');
 
           XLSX.writeFile(wb, `掃地工作項目範本_${new Date().toISOString().slice(0,10)}.xlsx`);
-          showToast('已成功下載 B、E 欄附帶下拉選單的 Excel 範本！', '📊');
+          showToast('已成功下載欄位完整對齊新增表單的 Excel 範本！', '📊');
         };
 
         const importExcelTemplate = (event) => {
@@ -1730,26 +1740,35 @@
               const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
               const imported = [];
+              const validCategories = categories.value;
+              const header = jsonRows[0] || [];
+              const hasIconColumn = String(header[4] || '').includes('圖示');
               jsonRows.forEach((row, idx) => {
                 if (idx === 0 || !row || row.length === 0) return;
-                const cat = row[1] ? String(row[1]).trim() : '教室';
-                const name = row[2] ? String(row[2]).trim() : '';
+                const hasAnyValue = row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
+                if (!hasAnyValue) return;
+                const catRaw = row[1] ? String(row[1]).trim() : '';
+                const cat = validCategories.includes(catRaw) ? catRaw : '教室';
+                const rawName = row[2] ? String(row[2]).trim() : '';
+                const name = rawName || `未命名工作 ${imported.length + 1}`;
                 const count = row[3] ? parseInt(row[3], 10) || 1 : 1;
-                const isHeavyStr = row[4] ? String(row[4]).trim() : '';
+                const iconRaw = hasIconColumn && row[4] ? String(row[4]).trim() : '';
+                const isHeavyStr = hasIconColumn
+                  ? (row[5] ? String(row[5]).trim() : '')
+                  : (row[4] ? String(row[4]).trim() : '');
                 const isHeavy = isHeavyStr.includes('是') || isHeavyStr === '1' || isHeavyStr.includes('🔨');
-                const icon = autoDetectIcon(name);
+                const description = hasIconColumn && row[6] ? String(row[6]).trim() : '';
+                const icon = iconRaw || autoDetectIcon(name);
 
-                if (name) {
-                  imported.push({
-                    id: 'imported-' + Date.now() + '-' + idx,
-                    name: name,
-                    category: cat,
-                    count: count,
-                    icon: icon,
-                    isHeavy: isHeavy,
-                    description: ''
-                  });
-                }
+                imported.push({
+                  id: 'imported-' + Date.now() + '-' + idx,
+                  name: name,
+                  category: cat,
+                  count: Math.max(1, count),
+                  icon: icon,
+                  isHeavy: isHeavy,
+                  description: description
+                });
               });
 
               if (imported.length > 0) {
@@ -1803,6 +1822,33 @@
           if (!taskId) return null;
           const t = tasks.value.find(x => x.id === taskId);
           return t ? (t.icon || '🧹') : null;
+        };
+
+        const chunkArray = (items, size = 3) => {
+          const list = Array.isArray(items) ? items : [];
+          const rows = [];
+          for (let i = 0; i < list.length; i += size) {
+            rows.push(list.slice(i, i + size));
+          }
+          return rows;
+        };
+
+        const chunkPlaceholders = (count) => {
+          const safeCount = Math.max(0, parseInt(count, 10) || 0);
+          return chunkArray(Array.from({ length: safeCount }, (_, idx) => idx + 1), 3);
+        };
+
+        const chunkTaskMembers = (item) => {
+          const assigned = (item.assignedMembers || []).map((member) => ({
+            key: member.id,
+            member
+          }));
+          const emptyCount = Math.max(0, (parseInt(item.requiredCount, 10) || 0) - assigned.length);
+          const emptySlots = Array.from({ length: emptyCount }, (_, idx) => ({
+            key: 'empty-' + idx,
+            member: null
+          }));
+          return chunkArray(assigned.concat(emptySlots), 3);
         };
 
         const manuallyAssignedMembersCount = computed(() => {
@@ -2509,6 +2555,8 @@
           assignTaskToMember,
           getAssignedTaskName,
           getAssignedTaskIcon,
+          chunkPlaceholders,
+          chunkTaskMembers,
           manuallyAssignedMembersCount,
           unassignedPresentMembersCount,
 
