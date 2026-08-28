@@ -27,6 +27,8 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <!-- html2canvas for image export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- jsPDF for real PDF file export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- SheetJS for real .xlsx Excel export and import -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Google Fonts -->
@@ -913,19 +915,26 @@
           <div class="flex flex-wrap items-center gap-2">
             <div class="bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center text-xs">
               <span class="text-slate-400 px-2 font-semibold">排序：</span>
-              <button 
-                @click="historySortMode = 'SEAT'" 
-                :class="[historySortMode === 'SEAT' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
+              <button
+                @click="historySortMode = 'SEQUENCE'"
+                :class="[historySortMode === 'SEQUENCE' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
                 class="px-2.5 py-1 rounded-lg transition"
               >
-                🔢 依座號 (小➔大)
+                🔢 依序號
               </button>
-              <button 
+              <button
                 @click="historySortMode = 'CATEGORY'" 
                 :class="[historySortMode === 'CATEGORY' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
                 class="px-2.5 py-1 rounded-lg transition"
               >
                 🏷️ 依類別
+              </button>
+              <button
+                @click="historySortMode = 'SEAT'"
+                :class="[historySortMode === 'SEAT' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
+                class="px-2.5 py-1 rounded-lg transition"
+              >
+                🔢 依座號
               </button>
             </div>
 
@@ -963,6 +972,13 @@
             </div>
 
             <div v-show="isHistoryExpanded(log.id)" class="p-6 border-t border-slate-100 dark:border-slate-700 space-y-4 bg-slate-50/50 dark:bg-slate-900/30">
+              <div class="flex flex-wrap gap-2">
+                <button @click.stop="downloadResultImage(log)" class="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">🖼️ 匯出 PNG</button>
+                <button @click.stop="exportPDF(log)" class="bg-[#E1251B] hover:bg-[#c91d14] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📄 匯出 PDF</button>
+                <button @click.stop="exportWord(log)" class="bg-[#185ABD] hover:bg-[#13499b] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📝 匯出 Word</button>
+                <button @click.stop="exportExcel(log)" class="bg-[#107C41] hover:bg-[#0e6b37] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📊 匯出 Excel</button>
+                <button @click.stop="deleteHistoryLog(log.id)" class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">🗑️ 刪除</button>
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div 
                   v-for="res in getSortedHistoryResults(log.results)" 
@@ -2203,7 +2219,7 @@
         const drawTimestamp = ref('');
         const hasDrawRun = ref(false);
         const historyLogs = ref([]);
-        const historySortMode = ref('SEAT');
+        const historySortMode = ref('SEQUENCE');
         const expandedHistoryIds = ref([]);
         const customWordTemplate = ref(null);
         const customExcelTemplate = ref(null);
@@ -2295,21 +2311,25 @@
           return taskIndex >= 0 ? taskIndex : fallbackIndex;
         };
 
-        const sortTaskCardsForExport = (list) => {
+        const sortTaskCardsForMode = (list, mode) => {
           return list.slice().sort((a, b) => {
-            if (exportSortMode.value === 'CATEGORY') {
+            const aIndex = getOriginalTaskIndex(a, 9999);
+            const bIndex = getOriginalTaskIndex(b, 9999);
+            if (mode === 'CATEGORY') {
               const catDiff = getCategoryOrder(a.category) - getCategoryOrder(b.category);
               if (catDiff !== 0) return catDiff;
-              return (a.originalIndex || 0) - (b.originalIndex || 0);
+              return aIndex - bIndex;
             }
-            if (exportSortMode.value === 'SEAT') {
+            if (mode === 'SEAT') {
               const seatDiff = getFirstAssignedSeatNo(a) - getFirstAssignedSeatNo(b);
               if (seatDiff !== 0) return seatDiff;
-              return (a.originalIndex || 0) - (b.originalIndex || 0);
+              return aIndex - bIndex;
             }
-            return (a.originalIndex || 0) - (b.originalIndex || 0);
+            return aIndex - bIndex;
           });
         };
+
+        const sortTaskCardsForExport = (list) => sortTaskCardsForMode(list, exportSortMode.value);
 
         const formattedExportTaskList = computed(() => {
           const list = displayTaskCards.value.map((item, index) => ({
@@ -2571,6 +2591,13 @@
           }
         };
 
+        const deleteHistoryLog = (id) => {
+          if (!confirm('確定要刪除這筆歷史記錄嗎？')) return;
+          historyLogs.value = historyLogs.value.filter(log => log.id !== id);
+          expandedHistoryIds.value = expandedHistoryIds.value.filter(expandedId => expandedId !== id);
+          showToast('已刪除這筆歷史紀錄', '🗑️');
+        };
+
         const toggleHistoryExpand = (id) => {
           const idx = expandedHistoryIds.value.indexOf(id);
           if (idx === -1) expandedHistoryIds.value.push(id);
@@ -2581,11 +2608,7 @@
 
         const getSortedHistoryResults = (results) => {
           if (!results) return [];
-          const list = [...results];
-          if (historySortMode.value === 'CATEGORY') {
-            list.sort((a, b) => getCategoryOrder(a.category) - getCategoryOrder(b.category));
-          }
-          return list;
+          return sortTaskCardsForMode(results, historySortMode.value);
         };
 
         const getSortedHistoryMembers = (membersList) => {
@@ -2593,20 +2616,165 @@
           return [...membersList].sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
         };
 
+        const isHistoryLogSource = (source) => source && Array.isArray(source.results);
+
+        const escapeHtml = (value) => String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+        const formatMemberName = (member) => `${member.seatNo ? `${member.seatNo}號 ` : ''}${member.name}${member.isManual ? '(指定)' : ''}`;
+
+        const prepareExportTaskList = (results, mode) => {
+          const list = (results || []).map((item, index) => ({
+            ...item,
+            originalIndex: getOriginalTaskIndex(item, index),
+            assignedMembers: item.assignedMembers || [],
+            assignedMembersNames: (item.assignedMembers || []).map(formatMemberName).join('、')
+          }));
+          return sortTaskCardsForMode(list, mode);
+        };
+
+        const getExportPayload = (source = null) => {
+          if (isHistoryLogSource(source)) {
+            return {
+              timestamp: source.timestamp || '歷史紀錄',
+              totalPresent: source.totalPresent || 0,
+              results: prepareExportTaskList(source.results, exportSortMode.value),
+              exemptMembers: getSortedHistoryMembers(source.exemptMembers || []),
+              fileSuffix: source.timestamp ? source.timestamp.replace(/[\\/:*?"<>|\s]+/g, '_') : new Date().toISOString().slice(0, 10)
+            };
+          }
+
+          return {
+            timestamp: drawTimestamp.value || '預備狀態',
+            totalPresent: presentMembers.value.length,
+            results: prepareExportTaskList(displayTaskCards.value, exportSortMode.value),
+            exemptMembers: [...exemptDisplayList.value],
+            fileSuffix: new Date().toISOString().slice(0, 10)
+          };
+        };
+
+        const getExportExemptNames = (payload) => {
+          if (!payload.exemptMembers || payload.exemptMembers.length === 0) return '無';
+          return payload.exemptMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
+        };
+
+        const buildExportHtml = (payload) => {
+          const taskCells = payload.results.map((item, idx) => {
+            const names = item.assignedMembersNames || '待抽籤';
+            const heavyStr = item.isHeavy ? '<span class="heavy">🔨 辛苦</span>' : '';
+            return `
+              <td class="task-cell">
+                <div class="task-head">
+                  <span class="task-index">${idx + 1}</span>
+                  <span class="task-title">${escapeHtml(item.taskIcon || '🧹')} ${escapeHtml(item.taskName)}</span>
+                  ${heavyStr}
+                </div>
+                <div class="task-meta">${escapeHtml(item.category || '教室')}｜需求 ${escapeHtml(item.requiredCount || 0)} 人</div>
+                <div class="task-members">${escapeHtml(names)}</div>
+              </td>
+            `;
+          });
+
+          const rows = [];
+          for (let i = 0; i < taskCells.length; i += 2) {
+            rows.push(`<tr>${taskCells[i]}${taskCells[i + 1] || '<td class="task-cell empty"></td>'}</tr>`);
+          }
+
+          const exemptHtml = payload.exemptMembers.length > 0
+            ? `<div class="exempt-box"><strong>✨ 免掃地成員：</strong>${escapeHtml(getExportExemptNames(payload))}</div>`
+            : '';
+
+          return `
+            <div class="export-sheet">
+              <div class="export-header">
+                <div>
+                  <h1>🧹 掃地工作分配表</h1>
+                  <p>抽籤時間：${escapeHtml(payload.timestamp)}</p>
+                </div>
+                <div class="summary">參與 ${escapeHtml(payload.totalPresent)} 人｜工作 ${escapeHtml(payload.results.length)} 項</div>
+              </div>
+              <table class="task-export-table"><tbody>${rows.join('')}</tbody></table>
+              ${exemptHtml}
+              <div class="footer-note">掃地工作小幫手</div>
+            </div>
+          `;
+        };
+
+        const getExportDocumentHtml = (payload) => `
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>掃地工作分配表</title>
+              <style>
+                @page { size: A4 landscape; margin: 8mm; }
+                body { margin: 0; background: #ffffff; color: #1e293b; font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+                .export-sheet { width: 277mm; box-sizing: border-box; padding: 8mm; background: #ffffff; }
+                .export-header { display: table; width: 100%; border-bottom: 2px solid #0f766e; padding-bottom: 6px; margin-bottom: 8px; }
+                .export-header > div { display: table-cell; vertical-align: middle; }
+                h1 { color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; }
+                p { font-size: 10.5px; color: #475569; margin: 3px 0 0; }
+                .summary { text-align: right; font-size: 10.5px; font-weight: 700; color: #0f766e; white-space: nowrap; }
+                .task-export-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 10.5px; }
+                .task-cell { width: 50%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; vertical-align: top; page-break-inside: avoid; }
+                .task-cell.empty { border: 0; }
+                .task-head { font-weight: 800; color: #0f172a; }
+                .task-index { display: inline-block; min-width: 20px; text-align: center; color: #0f766e; }
+                .task-title { margin-left: 3px; }
+                .heavy { color: #b45309; font-weight: 800; margin-left: 4px; }
+                .task-meta { color: #64748b; font-size: 9.5px; margin-top: 3px; }
+                .task-members { color: #0f172a; font-weight: 700; line-height: 1.55; margin-top: 4px; }
+                .exempt-box { margin: 8px 4px 0; font-size: 10.5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; }
+                .footer-note { margin-top: 6px; text-align: right; color: #94a3b8; font-size: 9px; }
+              </style>
+            </head>
+            <body>${buildExportHtml(payload)}</body>
+          </html>
+        `;
+
+        const createExportElement = (payload) => {
+          const wrapper = document.createElement('div');
+          wrapper.style.position = 'fixed';
+          wrapper.style.left = '-10000px';
+          wrapper.style.top = '0';
+          wrapper.style.width = '1123px';
+          wrapper.style.background = '#ffffff';
+          const doc = document.implementation.createHTMLDocument('');
+          doc.documentElement.innerHTML = getExportDocumentHtml(payload);
+          const style = doc.head.querySelector('style');
+          const sheet = doc.body.querySelector('.export-sheet');
+          if (style) wrapper.appendChild(style.cloneNode(true));
+          if (sheet) wrapper.appendChild(sheet.cloneNode(true));
+          document.body.appendChild(wrapper);
+          return wrapper;
+        };
+
+        const downloadBlob = (blob, filename) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
         // 匯出按鈕
         const copyTextResult = () => {
-          let text = `🧹 【本班掃地工作分配表 - ${drawTimestamp.value || '預備表'}】\n`;
+          const payload = getExportPayload();
+          let text = `🧹 【本班掃地工作分配表 - ${payload.timestamp || '預備表'}】\n`;
           text += `-------------------------------\n`;
           
-          formattedExportTaskList.value.forEach(item => {
-            const names = item.assignedMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name + (m.isManual ? '(指定)' : '')).join('、') || '待抽籤';
+          payload.results.forEach(item => {
+            const names = item.assignedMembersNames || '待抽籤';
             const heavyMark = item.isHeavy ? ' [🔨辛苦]' : '';
             text += `${item.taskIcon || '🧹'} [${item.category || '教室'}] ${item.taskName}${heavyMark}（${item.assignedMembers.length}/${item.requiredCount}人）：${names}\n`;
           });
 
-          if (exemptDisplayList.value.length > 0) {
-            const exemptNames = exemptDisplayList.value.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
-            text += `\n✨ 免掃地成員：${exemptNames}\n`;
+          if (payload.exemptMembers.length > 0) {
+            text += `\n✨ 免掃地成員：${getExportExemptNames(payload)}\n`;
           }
 
           text += `-------------------------------\n`;
@@ -2617,27 +2785,14 @@
           }).catch(() => showToast('複製失敗', '❌'));
         };
 
-        const downloadResultImage = () => {
-          const source = document.getElementById('print-pdf-template');
-          const target = source ? source.firstElementChild.cloneNode(true) : document.getElementById('result-export-card');
-          if (!target || typeof html2canvas !== 'function') return;
-          const wrapper = document.createElement('div');
-          wrapper.style.position = 'fixed';
-          wrapper.style.left = '-10000px';
-          wrapper.style.top = '0';
-          wrapper.style.width = '1123px';
-          wrapper.style.height = '794px';
-          wrapper.style.background = '#ffffff';
-          wrapper.style.overflow = 'hidden';
-          target.style.width = '1123px';
-          target.style.minHeight = '794px';
-          target.style.padding = '24px';
-          wrapper.appendChild(target);
-          document.body.appendChild(wrapper);
+        const downloadResultImage = (source = null) => {
+          if (typeof html2canvas !== 'function') return;
+          const payload = getExportPayload(source);
+          const wrapper = createExportElement(payload);
           showToast('正在生成高畫質圖片...', '⏳');
-          html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
+          html2canvas(wrapper.querySelector('.export-sheet'), { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
             const link = document.createElement('a');
-            link.download = `本班掃地工作分配表_${new Date().toISOString().slice(0,10)}.png`;
+            link.download = `本班掃地工作分配表_${payload.fileSuffix}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
             document.body.removeChild(wrapper);
@@ -2648,19 +2803,44 @@
           });
         };
 
-        const exportPDF = () => {
-          showToast('正在開啟 PDF 列印預覽...', '📄');
-          window.print();
+        const exportPDF = (source = null) => {
+          if (typeof html2canvas !== 'function' || !window.jspdf?.jsPDF) {
+            showToast('PDF 匯出模組未載入', '❌');
+            return;
+          }
+          const payload = getExportPayload(source);
+          const wrapper = createExportElement(payload);
+          showToast('正在生成 PDF 檔案...', '📄');
+          html2canvas(wrapper.querySelector('.export-sheet'), { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
+            const pdf = new window.jspdf.jsPDF('landscape', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+            const renderWidth = imgWidth * ratio;
+            const renderHeight = imgHeight * ratio;
+            const x = (pageWidth - renderWidth) / 2;
+            const y = (pageHeight - renderHeight) / 2;
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight);
+            pdf.save(`本班掃地工作分配表_${payload.fileSuffix}.pdf`);
+            document.body.removeChild(wrapper);
+            showToast('已匯出 PDF 檔案！', '📄');
+          }).catch(() => {
+            document.body.removeChild(wrapper);
+            showToast('PDF 匯出失敗', '❌');
+          });
         };
 
-        const exportExcel = () => {
+        const exportExcel = (source = null) => {
           if (typeof XLSX === 'undefined') return;
+          const payload = getExportPayload(source);
 
           const wsData = [
             ['序', '工作分類', '掃地工作名稱', '需求人數', '辛苦工作', '負責人員']
           ];
 
-          formattedExportTaskList.value.forEach((item, idx) => {
+          payload.results.forEach((item, idx) => {
             wsData.push([
               idx + 1,
               item.category || '教室',
@@ -2671,9 +2851,9 @@
             ]);
           });
 
-          if (exemptDisplayList.value.length > 0) {
+          if (payload.exemptMembers.length > 0) {
             wsData.push([]);
-            wsData.push(['✨ 免掃地成員', '', '', '', '', exemptDisplayListNames.value]);
+            wsData.push(['✨ 免掃地成員', '', '', '', '', getExportExemptNames(payload)]);
           }
 
           const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -2689,49 +2869,45 @@
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '掃地工作分配表');
 
-          XLSX.writeFile(wb, `本班掃地工作分配表_${new Date().toISOString().slice(0,10)}.xlsx`);
+          XLSX.writeFile(wb, `本班掃地工作分配表_${payload.fileSuffix}.xlsx`);
           showToast('已匯出 Excel (.xlsx)！', '📊');
         };
 
-        const exportWord = () => {
+        const exportWord = (source = null) => {
+          const payload = getExportPayload(source);
           let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
           <head><meta charset='utf-8'><title>掃地工作分配表</title>
           <style>
             @page { size: A4 landscape; margin: 8mm; }
             body { font-family: 'Microsoft JhengHei', sans-serif; padding: 0; color: #1e293b; }
-            .header-box { border-left: 5px solid #0f766e; padding-left: 10px; margin-bottom: 8px; }
-            h2 { color: #0f766e; font-size: 20px; margin: 0; }
-            .sub { font-size: 11px; color: #475569; margin-top: 4px; }
-            table { border-collapse: collapse; table-layout: fixed; width: 100%; margin-top: 8px; font-size: 10.5px; border: 1px solid #cbd5e1; }
-            th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; }
-            th { background-color: #f0f4f8; font-weight: bold; }
-            .exempt-box { margin-top: 8px; font-size: 10.5px; background-color: #f8fafc; padding: 7px 9px; border: 1px solid #e2e8f0; }
+            .export-sheet { width: 277mm; box-sizing: border-box; padding: 8mm; background: #ffffff; }
+            .export-header { display: table; width: 100%; border-bottom: 2px solid #0f766e; padding-bottom: 6px; margin-bottom: 8px; }
+            .export-header > div { display: table-cell; vertical-align: middle; }
+            h1 { color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; }
+            p { font-size: 10.5px; color: #475569; margin: 3px 0 0; }
+            .summary { text-align: right; font-size: 10.5px; font-weight: 700; color: #0f766e; white-space: nowrap; }
+            .task-export-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 10.5px; }
+            .task-cell { width: 50%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; vertical-align: top; page-break-inside: avoid; }
+            .task-cell.empty { border: 0; }
+            .task-head { font-weight: 800; color: #0f172a; }
+            .task-index { display: inline-block; min-width: 20px; text-align: center; color: #0f766e; }
+            .task-title { margin-left: 3px; }
+            .heavy { color: #b45309; font-weight: 800; margin-left: 4px; }
+            .task-meta { color: #64748b; font-size: 9.5px; margin-top: 3px; }
+            .task-members { color: #0f172a; font-weight: 700; line-height: 1.55; margin-top: 4px; }
+            .exempt-box { margin: 8px 4px 0; font-size: 10.5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; }
+            .footer-note { margin-top: 6px; text-align: right; color: #94a3b8; font-size: 9px; }
           </style></head><body>`;
 
           if (customWordTemplate.value) {
             html += customWordTemplate.value;
           } else {
-            html += `<div class="header-box"><h2>🧹 掃地工作分配表</h2><p class="sub">抽籤時間：${drawTimestamp.value || '預備狀態'}</p></div>`;
-            html += `<table><thead><tr><th style="width:34px;text-align:center;">序</th><th style="width:76px;">工作分類</th><th style="width:210px;">掃地工作</th><th style="width:62px;">需求</th><th>負責人員</th></tr></thead><tbody>`;
-            
-            formattedExportTaskList.value.forEach((item, idx) => {
-              const heavyStr = item.isHeavy ? ' (🔨 辛苦)' : '';
-              html += `<tr><td style="text-align:center;">${idx + 1}</td><td>${item.category || '教室'}</td><td>${item.taskIcon || ''} ${item.taskName}${heavyStr}</td><td>${item.requiredCount} 人</td><td><b>${item.assignedMembersNames || '待抽籤'}</b></td></tr>`;
-            });
-            html += `</tbody></table>`;
-            if (exemptDisplayList.value.length > 0) {
-              html += `<div class="exempt-box"><b>✨ 免掃地成員：</b>${exemptDisplayListNames.value}</div>`;
-            }
+            html += buildExportHtml(payload);
           }
 
           html += `</body></html>`;
           const blob = new Blob([html], { type: 'application/msword' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `掃地工作分配表_${new Date().toISOString().slice(0,10)}.doc`;
-          a.click();
-          URL.revokeObjectURL(url);
+          downloadBlob(blob, `掃地工作分配表_${payload.fileSuffix}.doc`);
           showToast('已成功匯出 Word (.doc)！', '📝');
         };
 
@@ -3031,6 +3207,7 @@
           isHistoryExpanded,
           getSortedHistoryResults,
           getSortedHistoryMembers,
+          deleteHistoryLog,
           clearHistory,
 
           // Exports
