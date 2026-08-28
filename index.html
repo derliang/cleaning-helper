@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 - 智慧單頁式抽籤系統</title>
+  <title>掃地工作小幫手 v2.5</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -119,14 +119,14 @@
     <!-- 頂部導航與頁籤 Header -->
     <header class="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 dark:from-slate-900 dark:via-teal-950 dark:to-slate-900 text-white shadow-lg sticky top-0 z-30 transition-colors">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center space-x-3">
+        <div class="flex items-center justify-between h-16 gap-3">
+          <div class="flex items-center space-x-3 min-w-0">
             <div class="bg-white/20 p-2 rounded-xl backdrop-blur-md text-2xl">
               🧹
             </div>
-            <div>
+            <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
-                掃地工作小幫手
+                <span class="truncate">掃地工作小幫手</span>
                 <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.5</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
@@ -134,7 +134,7 @@
           </div>
 
           <!-- 頂部右側功能鈕 -->
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 flex-shrink-0">
             <!-- 黑暗模式切換鈕 -->
             <button 
               @click="toggleDarkMode" 
@@ -145,9 +145,9 @@
               <span class="hidden sm:inline">{{ isDarkMode ? '亮色' : '暗黑' }}</span>
             </button>
 
-            <button @click="resetAllData" title="重置回預設資料" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
+            <button @click="resetAllData" title="清空全站資料" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-              <span class="hidden md:inline">重置全站</span>
+              <span class="hidden md:inline">全部重設</span>
             </button>
             <button @click="exportBackup" title="導出設定" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -269,7 +269,7 @@
                 <span>準備進行掃地工作抽籤</span>
               </h2>
               <div v-if="manuallyAssignedMembersCount > 0" class="text-xs text-amber-300 font-semibold pt-1">
-                📌 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，直接鎖定不參與隨機抽籤。
+                🧹 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，直接鎖定不參與隨機抽籤。
               </div>
             </div>
 
@@ -367,7 +367,7 @@
             </div>
 
             <!-- 工作卡片網格 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               <div 
                 v-for="item in displayTaskCards" 
                 :key="item.taskId"
@@ -375,26 +375,27 @@
                   activeDrawingTaskId === item.taskId ? 'ring-4 ring-amber-400 shadow-xl scale-[1.02]' : '',
                   item.isHeavy ? 'border-amber-300 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20' : 'border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60'
                 ]"
-                class="rounded-2xl p-4 border transition space-y-3 flex flex-col justify-between"
+                class="rounded-2xl p-3 border transition flex flex-col gap-2 min-w-0"
               >
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                      <span class="text-2xl">{{ item.taskIcon || '🧹' }}</span>
-                      <span>{{ item.taskName }}</span>
+                <div class="flex items-center justify-between gap-2 min-w-0">
+                  <span class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 min-w-0">
+                      <span class="text-xl flex-shrink-0">{{ item.taskIcon || '🧹' }}</span>
+                      <span class="truncate">{{ item.taskName }}</span>
                       <span v-if="item.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold text-lg animate-pulse">🔨</span>
                     </span>
                     
                     <span 
                       :class="getCategoryBadgeClass(item.category)"
-                      class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none"
+                      class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none flex-shrink-0"
                     >
                       {{ item.category || '教室' }} ({{ item.requiredCount }}人)
                     </span>
-                  </div>
-                  <p v-if="item.description" class="text-xs text-slate-400 dark:text-slate-400 mb-3">{{ item.description }}</p>
+                </div>
 
-                  <div class="flex flex-wrap gap-2 pt-1">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                  <p class="text-xs text-slate-400 dark:text-slate-400 truncate min-w-0 flex-1">{{ item.description || '尚未填寫說明' }}</p>
+
+                  <div class="flex flex-wrap gap-1.5 sm:justify-end flex-shrink-0">
                     <template v-if="isDrawing && activeDrawingTaskId === item.taskId && drawAnimationType !== 'none'">
                       <span 
                         v-for="n in item.requiredCount" 
@@ -406,7 +407,7 @@
                           drawAnimationType === 'dice' ? 'animate-dice-spin bg-teal-500 text-white font-black' :
                           'animate-shuffle bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold'
                         ]"
-                        class="text-sm px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
+                        class="text-xs px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
                       >
                         {{ 
                           drawAnimationType === 'flip' ? '🎴 揭曉中...' : 
@@ -426,9 +427,9 @@
                         :class="[
                           member.isManual ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
                         ]"
-                        class="text-sm font-bold px-3 py-2 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
+                        class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
                       >
-                        <span v-if="member.isManual" class="text-xs">📌</span>
+                        <span v-if="member.isManual" class="text-xs">🧹</span>
                         <svg v-else class="w-3.5 h-3.5 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                         </svg>
@@ -441,7 +442,7 @@
                       <span 
                         v-for="emptySlot in Math.max(0, item.requiredCount - item.assignedMembers.length)" 
                         :key="'empty-' + emptySlot"
-                        class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-3 py-2 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
+                        class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-2.5 py-1.5 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
                       >
                         <span>❓</span>
                         <span>{{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span>
@@ -449,7 +450,7 @@
                     </template>
                   </div>
                 </div>
-              </div>
+            </div>
             </div>
 
             <!-- 免掃地成員區 -->
@@ -588,7 +589,7 @@
                     class="w-6 h-6 rounded-md border flex items-center justify-center text-xs transition"
                     :title="member.assignedTaskId ? '已指定：' + getAssignedTaskName(member.assignedTaskId) : '點擊指派工作'"
                   >
-                    <span>{{ getAssignedTaskIcon(member.assignedTaskId) || '📌' }}</span>
+                    <span>{{ getAssignedTaskIcon(member.assignedTaskId) || '🧹' }}</span>
                   </button>
 
                   <button 
@@ -1096,6 +1097,21 @@
               </label>
             </div>
           </div>
+
+          <!-- 系統維護 -->
+          <div class="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-700">
+            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🔄 系統維護</h3>
+            <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p class="font-bold text-sm text-slate-800 dark:text-slate-100">恢復預設</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">恢復範例名單、預設掃地工作與抽籤偏好設定。</p>
+              </div>
+              <button @click="restoreDefaultData" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5 flex-shrink-0">
+                <span>🔄</span>
+                <span>恢復預設</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1106,7 +1122,7 @@
       <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
           <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-            <span>📌 指派掃地工作</span>
+            <span>🧹 指派掃地工作</span>
           </h3>
           <button @click="closeAssignModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
         </div>
@@ -1329,6 +1345,11 @@
         const members = ref([]);
         const newMemberName = ref('');
         const batchMemberInput = ref('');
+        const DEFAULT_MEMBER_NAMES = [
+          '1王大明', '2李小華', '3張小美', '4陳阿強', '5林小龍',
+          '6黃小雅', '7周傑克', '8吳小晴', '9蔡阿明', '10鄭小婷',
+          '11謝大力', '12洪小文', '13郭小萱', '14邱大寶', '15曾小怡'
+        ];
 
         const presentMembers = computed(() => members.value.filter(m => m.present));
         const nonPresentMembers = computed(() => {
@@ -1456,6 +1477,14 @@
         const newTaskIsHeavy = ref(false);
         const newTaskDesc = ref('');
         const selectedCategory = ref('教室');
+        const DEFAULT_DRAW_SETTINGS = {
+          avoidRepeat: true,
+          avoidSadness: true,
+          bigBlowMode: false,
+          enableConfetti: true,
+          drawDuration: 12,
+          drawAnimationType: 'shuffle'
+        };
 
         const taskEditModal = ref({
           isOpen: false,
@@ -1632,7 +1661,7 @@
           }
         };
 
-        const loadPresetTasks = () => {
+        const loadPresetTasks = (silent = false) => {
           tasks.value = [
             { id: 'preset-1', name: '掃教室走道', category: '教室', count: 2, icon: '🧹', isHeavy: false, description: '班級教室內地面掃地' },
             { id: 'preset-2', name: '拖教室地面', category: '教室', count: 2, icon: '🪣', isHeavy: false, description: '地板拖乾淨與水桶洗滌' },
@@ -1643,7 +1672,7 @@
             { id: 'preset-7', name: '洗手台與鏡子', category: '廁所', count: 1, icon: '💧', isHeavy: false, description: '鏡面擦拭與水槽清潔' },
             { id: 'preset-8', name: '廁所地面刷洗', category: '廁所', count: 2, icon: '🚽', isHeavy: true, description: '便器擦拭與地面刷洗' },
           ];
-          showToast('已載入預設四大分類掃地工作範本！', '💡');
+          if (!silent) showToast('已載入預設四大分類掃地工作範本！', '💡');
         };
 
         const downloadExcelTemplate = () => {
@@ -1759,7 +1788,7 @@
             manualAssignModal.value.member.assignedTaskId = taskId;
             const mName = manualAssignModal.value.member.name;
             const tName = getAssignedTaskName(taskId);
-            showToast(taskId ? `已將「${mName}」指定至【${tName}】` : `已取消「${mName}」的手動指定`, '📌');
+            showToast(taskId ? `已將「${mName}」指定至【${tName}】` : `已取消「${mName}」的手動指定`, '🧹');
           }
           closeAssignModal();
         };
@@ -2291,7 +2320,9 @@
             bigBlowMode: bigBlowMode.value,
             enableConfetti: enableConfetti.value,
             drawDuration: drawDuration.value,
-            drawAnimationType: drawAnimationType.value
+            drawAnimationType: drawAnimationType.value,
+            customWordTemplate: customWordTemplate.value,
+            customExcelTemplate: customExcelTemplate.value
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         };
@@ -2318,17 +2349,14 @@
               if (data.enableConfetti !== undefined) enableConfetti.value = data.enableConfetti;
               if (data.drawDuration !== undefined) drawDuration.value = data.drawDuration;
               if (data.drawAnimationType !== undefined) drawAnimationType.value = data.drawAnimationType;
+              if (data.customWordTemplate !== undefined) customWordTemplate.value = data.customWordTemplate;
+              if (data.customExcelTemplate !== undefined) customExcelTemplate.value = data.customExcelTemplate;
             } catch (e) {
               console.error(e);
             }
           } else {
-            loadPresetTasks();
-            const sample = [
-              '1王大明', '2李小華', '3張小美', '4陳阿強', '5林小龍',
-              '6黃小雅', '7周傑克', '8吳小晴', '9蔡阿明', '10鄭小婷',
-              '11謝大力', '12洪小文', '13郭小萱', '14邱大寶', '15曾小怡'
-            ];
-            members.value = sample.map((nameStr, idx) => ({
+            loadPresetTasks(true);
+            members.value = DEFAULT_MEMBER_NAMES.map((nameStr, idx) => ({
               id: 'sample-' + (idx + 1),
               seatNo: idx + 1,
               name: nameStr.replace(/^\d+/, ''),
@@ -2343,15 +2371,45 @@
         }, { deep: true });
 
         const resetAllData = () => {
-          if (confirm('警告：確定要恢復預設狀態嗎？')) {
+          if (confirm('警告：確定要全部重設嗎？\n\n這會清空所有成員、掃地工作、抽籤結果、免掃地名單與歷史紀錄。此操作無法復原。')) {
             localStorage.removeItem(STORAGE_KEY);
-            loadPresetTasks();
-            const sample = ['1王大明', '2李小華', '3張小美', '4陳阿強', '5林小龍', '6黃小雅', '7周傑克', '8吳小晴', '9蔡阿明', '10鄭小婷'];
-            members.value = sample.map((str, idx) => ({ id: 'sample-' + (idx + 1), seatNo: idx + 1, name: str.replace(/^\d+/, ''), present: true, assignedTaskId: null }));
+            members.value = [];
+            tasks.value = [];
             currentResults.value = [];
+            exemptMembers.value = [];
             historyLogs.value = [];
             hasDrawRun.value = false;
-            showToast('已重置為預設狀態', '🔄');
+            drawTimestamp.value = '';
+            customWordTemplate.value = null;
+            customExcelTemplate.value = null;
+            showToast('已完成全部重設，所有資料已清空', '🗑️');
+          }
+        };
+
+        const restoreDefaultData = () => {
+          if (confirm('確定要恢復程式預設值嗎？\n\n這會載入預設成員、預設掃地工作與預設抽籤偏好，並清除目前抽籤結果與歷史紀錄。')) {
+            loadPresetTasks(true);
+            members.value = DEFAULT_MEMBER_NAMES.map((str, idx) => ({
+              id: 'sample-' + (idx + 1),
+              seatNo: idx + 1,
+              name: str.replace(/^\d+/, ''),
+              present: true,
+              assignedTaskId: null
+            }));
+            currentResults.value = [];
+            exemptMembers.value = [];
+            historyLogs.value = [];
+            hasDrawRun.value = false;
+            drawTimestamp.value = '';
+            avoidRepeat.value = DEFAULT_DRAW_SETTINGS.avoidRepeat;
+            avoidSadness.value = DEFAULT_DRAW_SETTINGS.avoidSadness;
+            bigBlowMode.value = DEFAULT_DRAW_SETTINGS.bigBlowMode;
+            enableConfetti.value = DEFAULT_DRAW_SETTINGS.enableConfetti;
+            drawDuration.value = DEFAULT_DRAW_SETTINGS.drawDuration;
+            drawAnimationType.value = DEFAULT_DRAW_SETTINGS.drawAnimationType;
+            customWordTemplate.value = null;
+            customExcelTemplate.value = null;
+            showToast('已恢復程式預設值', '🔄');
           }
         };
 
@@ -2500,6 +2558,7 @@
 
           // System
           resetAllData,
+          restoreDefaultData,
           exportBackup,
           importBackup
         };
