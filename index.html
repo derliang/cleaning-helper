@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.7</title>
+  <title>掃地工作小幫手 v2.8</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -132,7 +132,7 @@
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.7</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.8</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -150,8 +150,8 @@
               <span class="hidden sm:inline">{{ isDarkMode ? '亮色' : '暗黑' }}</span>
             </button>
 
-            <button @click="resetAllData" title="清空全站資料" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <button @click="resetAllData" title="清空全站資料" class="text-xs bg-black hover:bg-slate-950 text-yellow-300 px-3 py-1.5 rounded-lg border border-yellow-400 shadow-[0_0_0_1px_rgba(250,204,21,0.35)] transition flex items-center gap-1 font-black">
+              <span class="text-sm leading-none">☢️</span>
               <span class="hidden md:inline">全部重設</span>
             </button>
             <button @click="exportBackup" title="導出設定" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
@@ -633,9 +633,6 @@
           </div>
           
           <div class="flex flex-wrap gap-2">
-            <button @click="loadPresetTasks" class="bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-              💡 載入預設四大分類範本
-            </button>
             <button @click="clearAllTasks" class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
               🗑️ 清空所有工作
             </button>
@@ -793,13 +790,7 @@
               <div class="flex items-center justify-between">
                 <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
                   <span>📋 掃地工作列表 ({{ filteredTasks.length }} 項)</span>
-                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full" :class="getCategoryBadgeClass(selectedCategory)">
-                    當前檢視：{{ selectedCategory }}
-                  </span>
                 </h3>
-                <span class="text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
-                  總需求 {{ totalRequiredSlots }} 人手
-                </span>
               </div>
 
               <!-- 列表 Table -->
@@ -816,7 +807,12 @@
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    <tr v-for="(task, tIdx) in sortedFilteredTasks" :key="task.id" class="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition">
+                    <tr
+                      v-for="(task, tIdx) in sortedFilteredTasks"
+                      :key="task.id"
+                      :class="getTaskAssignedMembers(task.id).length > 0 ? 'bg-teal-50/80 dark:bg-teal-950/30 ring-1 ring-inset ring-teal-200 dark:ring-teal-800' : 'hover:bg-slate-50/80 dark:hover:bg-slate-700/40'"
+                      class="transition"
+                    >
                       
                       <td class="py-3 px-2 text-center font-mono font-bold text-slate-400">
                         {{ tIdx + 1 }}
@@ -848,6 +844,9 @@
                           <span class="text-base">{{ task.icon || '🧹' }}</span>
                           <span>{{ task.name }}</span>
                           <span v-if="task.isHeavy" class="text-amber-500 text-[10px] font-bold bg-amber-50 dark:bg-amber-950 border border-amber-200 px-1 py-0.2 rounded">辛苦</span>
+                          <span v-if="getTaskAssignedMembers(task.id).length > 0" class="text-teal-700 dark:text-teal-300 text-[10px] font-bold bg-teal-100 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 px-1.5 py-0.5 rounded">
+                            已指派 {{ getTaskAssignedMembers(task.id).length }} 人
+                          </span>
                           
                           <span v-if="task.description" class="text-xs font-normal text-slate-400 dark:text-slate-400 ml-2 border-l border-slate-200 dark:border-slate-700 pl-2">
                             {{ task.description }}
@@ -1124,14 +1123,30 @@
                   type="text"
                   class="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
-                <div class="flex items-center gap-2">
-                  <label class="text-xs font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">圖示</label>
-                  <input
-                    v-model="cat.icon"
-                    type="text"
-                    maxlength="4"
-                    class="w-16 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                <div class="space-y-2">
+                  <button
+                    type="button"
+                    @click="toggleCategoryIconPicker(cat.id)"
+                    class="w-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between transition"
                   >
+                    <span>選擇圖示</span>
+                    <span class="text-lg">{{ cat.icon }}</span>
+                  </button>
+                  <div
+                    v-if="categoryIconPickerId === cat.id"
+                    class="grid grid-cols-8 gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2"
+                  >
+                    <button
+                      v-for="icon in categoryIconOptions"
+                      :key="cat.id + '-' + icon"
+                      type="button"
+                      @click="selectCategoryIcon(cat, icon)"
+                      :class="cat.icon === icon ? 'bg-teal-600 text-white ring-2 ring-teal-300' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                      class="w-8 h-8 rounded-lg text-base flex items-center justify-center transition"
+                    >
+                      {{ icon }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1161,7 +1176,7 @@
               <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📝 自訂 Word 匯出範本 (.doc/.html)</span>
                 <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
-                  {{ customWordTemplate ? '✅ 已上傳自訂 Word 範本 (點擊更換)' : '📤 選擇 Word 範本檔案' }}
+                  {{ customWordTemplate ? '✅ 已上傳自訂 Word 範本 (點擊更換)' : '📤 上傳 Word 範本檔案' }}
                   <input type="file" accept=".doc, .html, .txt" @change="handleWordTemplateUpload" class="hidden">
                 </label>
               </div>
@@ -1169,7 +1184,7 @@
               <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📊 自訂 Excel 匯出範本 (.xlsx)</span>
                 <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
-                  {{ customExcelTemplate ? '✅ 已上傳自訂 Excel 範本 (點擊更換)' : '📤 選擇 Excel 範本檔案' }}
+                  {{ customExcelTemplate ? '✅ 已上傳自訂 Excel 範本 (點擊更換)' : '📤 上傳 Excel 範本檔案' }}
                   <input type="file" accept=".xlsx" @change="handleExcelTemplateUpload" class="hidden">
                 </label>
               </div>
@@ -1271,7 +1286,7 @@
           </span>
         </div>
 
-        <div class="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
           <button
             v-for="member in presentMembers"
             :key="member.id"
@@ -1283,7 +1298,7 @@
                   ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                   : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
             ]"
-            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border"
+            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border min-w-0"
           >
             <span class="flex items-center gap-2 min-w-0">
               <span class="font-mono bg-white/20 px-1.5 py-0.5 rounded">#{{ member.seatNo || '-' }}</span>
@@ -1661,7 +1676,7 @@
         const DEFAULT_DRAW_SETTINGS = {
           avoidRepeat: true,
           avoidSadness: true,
-          bigBlowMode: false,
+          bigBlowMode: true,
           enableConfetti: true,
           drawDuration: 12,
           drawAnimationType: 'shuffle'
@@ -1671,6 +1686,12 @@
           { value: 'CATEGORY', label: '依類別' },
           { value: 'SEAT', label: '依座號' }
         ];
+        const categoryIconOptions = [
+          '🏫', '🚽', '📋', '🏛️', '📁', '🧹', '🪣', '🧽',
+          '🧼', '🪠', '🫧', '🪟', '🪞', '💧', '🚰', '🧻',
+          '🗑️', '♻️', '🍂', '🪴', '🚪', '🪑', '✨', '🔨'
+        ];
+        const categoryIconPickerId = ref(null);
 
         const taskEditModal = ref({
           isOpen: false,
@@ -1732,6 +1753,16 @@
           if (newTaskCategory.value === oldName) newTaskCategory.value = newName;
           if (taskEditModal.value.form.category === oldName) taskEditModal.value.form.category = newName;
           showToast(`已將類別改為「${newName}」`, '🏷️');
+        };
+
+        const toggleCategoryIconPicker = (categoryId) => {
+          categoryIconPickerId.value = categoryIconPickerId.value === categoryId ? null : categoryId;
+        };
+
+        const selectCategoryIcon = (cat, icon) => {
+          cat.icon = icon;
+          categoryIconPickerId.value = null;
+          showToast(`已更新「${cat.name}」的類別圖示`, icon);
         };
 
         const saveEditTask = () => {
@@ -2090,12 +2121,14 @@
             member.assignedTaskId = null;
             syncManualAssignmentsToResults();
             showToast(`已取消「${member.name}」的工作指派`, '🔄');
+            closeTaskAssignModal();
             return;
           }
           const task = tasks.value.find(item => item.id === taskId);
           member.assignedTaskId = taskId;
           syncManualAssignmentsToResults();
           showToast(`已將「${member.name}」指定至【${task?.name || '掃地工作'}】`, '🧹');
+          closeTaskAssignModal();
         };
 
         const assignTaskToMember = (taskId) => {
@@ -2911,6 +2944,8 @@
 
           // Tasks
           categorySettings,
+          categoryIconOptions,
+          categoryIconPickerId,
           categories,
           allCategoryNames,
           presetIcons,
@@ -2931,6 +2966,8 @@
           getCategoryActiveClass,
           ensureSelectedCategory,
           renameCategory,
+          toggleCategoryIconPicker,
+          selectCategoryIcon,
           categoryStats,
           filteredTasks,
           sortedFilteredTasks,
