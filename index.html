@@ -1363,17 +1363,36 @@
           <div>
             <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作名稱</label>
             <div class="flex gap-2">
-              <input 
-                type="text" 
-                v-model="taskEditModal.form.icon" 
-                placeholder="圖示" 
-                class="w-14 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              >
+              <div class="relative">
+                <button
+                  type="button"
+                  @click="toggleTaskIconPicker"
+                  class="w-14 h-full min-h-[42px] bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none transition"
+                  title="選擇工作圖示"
+                >
+                  {{ taskEditModal.form.icon || '🧹' }}
+                </button>
+              </div>
               <input 
                 type="text" 
                 v-model="taskEditModal.form.name" 
                 class="flex-grow p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
+            </div>
+
+            <div v-if="isTaskIconPickerOpen" class="mt-2 p-2 bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="icon in presetIcons"
+                  :key="'edit-icon-' + icon"
+                  type="button"
+                  @click="selectTaskEditIcon(icon)"
+                  :class="taskEditModal.form.icon === icon ? 'bg-teal-100 dark:bg-teal-950 border-teal-400 ring-2 ring-teal-200' : 'bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'"
+                  class="w-8 h-8 rounded-lg text-sm flex items-center justify-center border transition"
+                >
+                  {{ icon }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1708,6 +1727,7 @@
           '🗑️', '♻️', '🍂', '🪴', '🚪', '🪑', '✨', '🔨'
         ];
         const categoryIconPickerId = ref(null);
+        const isTaskIconPickerOpen = ref(false);
 
         const taskEditModal = ref({
           isOpen: false,
@@ -1721,10 +1741,12 @@
             task: task,
             form: { ...task }
           };
+          isTaskIconPickerOpen.value = false;
         };
 
         const closeEditTaskModal = () => {
           taskEditModal.value.isOpen = false;
+          isTaskIconPickerOpen.value = false;
         };
 
         const ensureSelectedCategory = () => {
@@ -1779,6 +1801,16 @@
           cat.icon = icon;
           categoryIconPickerId.value = null;
           showToast(`已更新「${cat.name}」的類別圖示`, icon);
+        };
+
+        const toggleTaskIconPicker = () => {
+          isTaskIconPickerOpen.value = !isTaskIconPickerOpen.value;
+        };
+
+        const selectTaskEditIcon = (icon) => {
+          taskEditModal.value.form.icon = icon;
+          isTaskIconPickerOpen.value = false;
+          showToast('已更新工作圖示', icon);
         };
 
         const saveEditTask = () => {
@@ -3122,6 +3154,7 @@
           categorySettings,
           categoryIconOptions,
           categoryIconPickerId,
+          isTaskIconPickerOpen,
           categories,
           allCategoryNames,
           presetIcons,
@@ -3144,6 +3177,8 @@
           renameCategory,
           toggleCategoryIconPicker,
           selectCategoryIcon,
+          toggleTaskIconPicker,
+          selectTaskEditIcon,
           categoryStats,
           filteredTasks,
           sortedFilteredTasks,
