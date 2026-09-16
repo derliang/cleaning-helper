@@ -1267,8 +1267,13 @@
             v-for="task in activeTasks" 
             :key="task.id"
             @click="assignTaskToMember(task.id)"
+            :disabled="isTaskFull(task.id)"
             :class="[
-              manualAssignModal.member?.assignedTaskId === task.id ? 'bg-teal-600 text-white font-bold' : 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+              isTaskFull(task.id)
+                ? 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed grayscale'
+                : manualAssignModal.member?.assignedTaskId === task.id
+                  ? 'bg-teal-600 text-white font-bold'
+                  : 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
             ]"
             class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border"
           >
@@ -1277,7 +1282,9 @@
               <span>{{ task.name }}</span>
               <span v-if="task.isHeavy" class="text-amber-500">🔨</span>
             </span>
-            <span class="text-[10px] opacity-80">需求 {{ task.count }} 人</span>
+            <span class="text-[10px] opacity-80">
+              {{ isTaskFull(task.id) ? `已滿 ${getTaskAssignedMembers(task.id).length}/${task.count}` : `需求 ${task.count} 人` }}
+            </span>
           </button>
         </div>
       </div>
@@ -1307,9 +1314,12 @@
             v-for="member in presentMembers"
             :key="member.id"
             @click="toggleMemberTaskAssignment(member, taskAssignModal.task.id)"
+            :disabled="isTaskFull(taskAssignModal.task.id) && member.assignedTaskId !== taskAssignModal.task.id"
             :class="[
               member.assignedTaskId === taskAssignModal.task.id
                 ? 'bg-teal-600 text-white border-teal-700 font-bold'
+                : isTaskFull(taskAssignModal.task.id)
+                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed'
                 : member.assignedTaskId
                   ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                   : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
@@ -2163,6 +2173,23 @@
           return presentMembers.value.filter(member => member.assignedTaskId === taskId);
         };
 
+        const isTaskFull = (taskId) => {
+          const task = tasks.value.find(item => item.id === taskId);
+          if (!task) return false;
+          return getTaskAssignedMembers(taskId).length >= Math.max(1, Number(task.count) || 1);
+        };
+
+        const confirmTaskReassignment = (member, nextTaskId) => {
+          if (!member?.assignedTaskId || !nextTaskId || member.assignedTaskId === nextTaskId) return true;
+          const currentTask = tasks.value.find(item => item.id === member.assignedTaskId);
+          const nextTask = tasks.value.find(item => item.id === nextTaskId);
+          const currentTaskName = `${currentTask?.icon || ''}${currentTask?.name || '原工作'}`;
+          const nextTaskName = `${nextTask?.icon || ''}${nextTask?.name || '新工作'}`;
+          return window.confirm(
+            `「${member.name}」目前已被指派至【${currentTaskName}】。\n\n是否確定改指派至【${nextTaskName}】？`
+          );
+        };
+
         const toggleMemberTaskAssignment = (member, taskId) => {
           if (!member || !taskId) return;
           if (member.assignedTaskId === taskId) {
@@ -2172,6 +2199,8 @@
             closeTaskAssignModal();
             return;
           }
+          if (isTaskFull(taskId)) return;
+          if (!confirmTaskReassignment(member, taskId)) return;
           const task = tasks.value.find(item => item.id === taskId);
           member.assignedTaskId = taskId;
           syncManualAssignmentsToResults();
@@ -2181,6 +2210,8 @@
 
         const assignTaskToMember = (taskId) => {
           if (manualAssignModal.value.member) {
+            if (taskId && isTaskFull(taskId)) return;
+            if (!confirmTaskReassignment(manualAssignModal.value.member, taskId)) return;
             manualAssignModal.value.member.assignedTaskId = taskId;
             syncManualAssignmentsToResults();
             const mName = manualAssignModal.value.member.name;
@@ -3204,6 +3235,7 @@
           openTaskAssignModal,
           closeTaskAssignModal,
           getTaskAssignedMembers,
+          isTaskFull,
           toggleMemberTaskAssignment,
           assignTaskToMember,
           getAssignedTaskName,
