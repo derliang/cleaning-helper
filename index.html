@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.9</title>
+  <title>掃地工作小幫手 v2.10</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -22,7 +22,7 @@
     }
   </script>
   <!-- Vue 3 -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
   <!-- Canvas Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <!-- html2canvas for image export -->
@@ -134,7 +134,7 @@
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.9</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.10</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -176,7 +176,7 @@
               'px-4 py-2.5 rounded-t-lg text-sm font-medium transition flex items-center gap-2 whitespace-nowrap'
             ]"
           >
-            <svg v-if="tab.id === 'members'" class="w-4 h-4 text-white opacity-90 inline-block" fill="currentColor" viewBox="0 0 20 20">
+            <svg v-if="tab.id === 'members'" class="w-4 h-4 opacity-90 inline-block" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
             </svg>
             <span v-else>{{ tab.icon }}</span>
@@ -810,14 +810,14 @@
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     <tr
-                      v-for="(task, tIdx) in sortedFilteredTasks"
+                      v-for="task in sortedFilteredTasks"
                       :key="task.id"
                       :class="getTaskAssignedMembers(task.id).length > 0 ? 'bg-teal-50/80 dark:bg-teal-950/30 ring-1 ring-inset ring-teal-200 dark:ring-teal-800' : 'hover:bg-slate-50/80 dark:hover:bg-slate-700/40'"
                       class="transition"
                     >
                       
                       <td class="py-3 px-2 text-center font-mono font-bold text-slate-400">
-                        {{ tIdx + 1 }}
+                        {{ getTaskSequenceNo(task) }}
                       </td>
 
                       <td class="py-3 px-2 text-center">
@@ -829,7 +829,7 @@
                               : 'text-slate-300 hover:text-slate-400 dark:text-slate-600 opacity-40 hover:opacity-80'
                           ]"
                           class="w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-sm transition"
-                          :title="task.isHeavy ? '取消辛苦標記' : '標記為「辛苦的工作 🔨 (置頂且最後抽)」'"
+                          :title="task.isHeavy ? '取消辛苦標記' : '標記為「辛苦的工作 🔨 (看板置頂且最後抽)」'"
                         >
                           🔨
                         </button>
@@ -1135,7 +1135,7 @@
                 </label>
                 <input
                   :value="cat.name"
-                  @change="renameCategory(cat, $event.target.value)"
+                  @change="renameCategory(cat, $event.target.value); $event.target.value = cat.name"
                   type="text"
                   class="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
@@ -1168,10 +1168,10 @@
             </div>
           </div>
 
-          <!-- 自訂匯出範本模式 -->
+          <!-- 匯出設定 -->
           <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🛠️ 自訂匯出範本模式</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">您可以上傳自訂的 Word 與 Excel 範本檔，匯出時系統將自動套用您的格式。</p>
+            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🛠️ 匯出設定</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">LINE 文字、PNG、PDF、Excel、Word 匯出時的工作排序方式。</p>
 
             <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
               <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">匯出時的排序</span>
@@ -1188,23 +1188,6 @@
               </div>
             </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📝 自訂 Word 匯出範本 (.doc/.html)</span>
-                <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
-                  {{ customWordTemplate ? '✅ 已上傳自訂 Word 範本 (點擊更換)' : '📤 上傳 Word 範本檔案' }}
-                  <input type="file" accept=".doc, .html, .txt" @change="handleWordTemplateUpload" class="hidden">
-                </label>
-              </div>
-
-              <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">📊 自訂 Excel 匯出範本 (.xlsx)</span>
-                <label class="block bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 text-center font-bold cursor-pointer">
-                  {{ customExcelTemplate ? '✅ 已上傳自訂 Excel 範本 (點擊更換)' : '📤 上傳 Excel 範本檔案' }}
-                  <input type="file" accept=".xlsx" @change="handleExcelTemplateUpload" class="hidden">
-                </label>
-              </div>
-            </div>
           </div>
 
           <!-- 資料備份與還原 -->
@@ -1533,12 +1516,21 @@
 
         const toastMessage = ref('');
         const toastIcon = ref('💡');
+        let toastTimer = null;
         const showToast = (msg, icon = '💡') => {
           toastMessage.value = msg;
           toastIcon.value = icon;
-          setTimeout(() => {
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => {
             toastMessage.value = '';
           }, 3000);
+        };
+
+        // 檔名用的本地日期（台北時間），不用 toISOString 以免早上 8 點前差一天
+        const pad2 = (n) => String(n).padStart(2, '0');
+        const getLocalDateStamp = () => {
+          const d = new Date();
+          return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
         };
 
         // 1. 人員資料
@@ -1558,26 +1550,33 @@
             .sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
         });
 
+        // 解析「座號 姓名」：支援 1王大明、1號王大明、1 王大明、1<Tab>王大明（Excel 複製）
+        const MEMBER_INPUT_RE = /^(\d+)[號.\s:-]*(.+)$/;
+        const parseMemberInput = (raw) => {
+          const match = raw.match(MEMBER_INPUT_RE);
+          if (match && match[2].trim()) {
+            return { seatNo: parseInt(match[1], 10), name: match[2].trim() };
+          }
+          return { seatNo: null, name: raw };
+        };
+        // 同名但座號不同的同學可以並存，只有「座號＋姓名」都相同才算重複
+        const isDuplicateMember = (name, seatNo) => members.value.some(m => m.name === name && (m.seatNo || null) === (seatNo || null));
+
         const addSingleMember = () => {
           const raw = newMemberName.value.trim();
           if (!raw) return;
 
-          let seatNo = null;
-          let name = raw;
-
-          const match = raw.match(/^(\d+)[號.\s:-]*(\S+)/);
-          if (match) {
-            seatNo = parseInt(match[1], 10);
-            name = match[2].trim();
-          }
+          const parsed = parseMemberInput(raw);
+          let seatNo = parsed.seatNo;
+          const name = parsed.name;
 
           if (!seatNo) {
             const maxSeat = members.value.reduce((max, m) => Math.max(max, m.seatNo || 0), 0);
             seatNo = maxSeat + 1;
           }
 
-          if (members.value.some(m => m.name === name)) {
-            showToast(`成員「${name}」已在名單中`, '⚠️');
+          if (isDuplicateMember(name, seatNo)) {
+            showToast(`成員「${seatNo}號 ${name}」已在名單中`, '⚠️');
             return;
           }
 
@@ -1597,26 +1596,28 @@
 
         const addBatchMembers = () => {
           if (!batchMemberInput.value.trim()) return;
-          const rawNames = batchMemberInput.value.split(/[\n,，\s]+/);
+          // 只用換行／逗號／頓號／分號切人，保留「1 王大明」「1<Tab>王大明」這種座號與姓名中間的空白
+          const rawNames = batchMemberInput.value.split(/[\r\n,，、;；]+/);
           let addedCount = 0;
+          let totalCount = 0;
           let maxSeat = members.value.reduce((max, m) => Math.max(max, m.seatNo || 0), 0);
 
           rawNames.forEach(rawItem => {
             const raw = rawItem.trim();
             if (!raw) return;
 
-            let seatNo = null;
-            let name = raw;
-            const match = raw.match(/^(\d+)[號.\s:-]*(\S+)/);
-            if (match) {
-              seatNo = parseInt(match[1], 10);
-              name = match[2].trim();
+            totalCount++;
+            const parsed = parseMemberInput(raw);
+            let seatNo = parsed.seatNo;
+            const name = parsed.name;
+            if (seatNo) {
+              if (seatNo > maxSeat) maxSeat = seatNo;
             } else {
               maxSeat++;
               seatNo = maxSeat;
             }
 
-            if (name && !members.value.some(m => m.name === name)) {
+            if (name && !isDuplicateMember(name, seatNo)) {
               members.value.push({
                 id: Date.now() + Math.random().toString(36).substring(2, 5),
                 seatNo: seatNo,
@@ -1630,7 +1631,12 @@
 
           members.value.sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
           batchMemberInput.value = '';
-          showToast(`已成功順序劃分座號並匯入 ${addedCount} 位成員！`, '🎉');
+          const skippedCount = totalCount - addedCount;
+          if (addedCount > 0) {
+            showToast(`已匯入 ${addedCount} 位成員${skippedCount > 0 ? `，略過 ${skippedCount} 位重複` : ''}！`, '🎉');
+          } else {
+            showToast('沒有新增任何成員（名單可能全部重複）', '⚠️');
+          }
         };
 
         const resequenceSeats = () => {
@@ -1676,7 +1682,8 @@
             return {
               ...defaultCat,
               name: saved?.name ? String(saved.name).trim() : defaultCat.name,
-              visible: saved?.visible === undefined ? defaultCat.visible : !!saved.visible
+              visible: saved?.visible === undefined ? defaultCat.visible : !!saved.visible,
+              icon: saved?.icon ? String(saved.icon) : defaultCat.icon
             };
           });
         };
@@ -1738,6 +1745,9 @@
         ];
         const categoryIconPickerId = ref(null);
         const isTaskIconPickerOpen = ref(false);
+
+        // 需求人數一律是 >= 1 的整數（v-model.number 的 min 不會擋負數與小數）
+        const normalizeCount = (value) => Math.max(1, Math.floor(Number(value)) || 1);
 
         const taskEditModal = ref({
           isOpen: false,
@@ -1832,12 +1842,18 @@
           }
           const target = tasks.value.find(t => t.id === taskEditModal.value.task.id);
           if (target) {
+            const nextCount = normalizeCount(f.count);
+            const assignedCount = getTaskAssignedMembers(target.id).length;
+            if (nextCount < assignedCount) {
+              showToast(`此工作已指派 ${assignedCount} 人，需求人數不可低於 ${assignedCount}`, '⚠️');
+              return;
+            }
             target.name = f.name.trim();
             target.category = f.category;
-            target.count = f.count || 1;
-            target.icon = f.icon.trim() || autoDetectIcon(f.name);
-            target.isHeavy = f.isHeavy;
-            target.description = f.description.trim();
+            target.count = nextCount;
+            target.icon = String(f.icon || '').trim() || autoDetectIcon(f.name);
+            target.isHeavy = !!f.isHeavy;
+            target.description = String(f.description || '').trim();
             showToast(`已成功儲存「${target.name}」修改內容！`, '✅');
           }
           closeEditTaskModal();
@@ -1914,13 +1930,9 @@
           return activeTasks.value.filter(t => (t.category || '教室') === selectedCategory.value);
         });
 
-        const sortedFilteredTasks = computed(() => {
-          return [...filteredTasks.value].sort((a, b) => {
-            if (a.isHeavy && !b.isHeavy) return -1;
-            if (!a.isHeavy && b.isHeavy) return 1;
-            return 0;
-          });
-        });
+        // 工作列表維持原始順序，序號與匯出（依序號模式）一致；辛苦工作只在抽籤看板置頂
+        const sortedFilteredTasks = computed(() => filteredTasks.value);
+        const getTaskSequenceNo = (task) => tasks.value.findIndex(t => t.id === task.id) + 1;
 
         const totalRequiredSlots = computed(() => activeTasks.value.reduce((sum, t) => sum + (t.count || 0), 0));
 
@@ -1935,7 +1947,7 @@
 
         const toggleTaskHeavy = (task) => {
           task.isHeavy = !task.isHeavy;
-          showToast(task.isHeavy ? `已將「${task.name}」標記為辛苦工作 🔨 (置頂且最後抽)` : `已取消「${task.name}」辛苦工作標記`, '🔨');
+          showToast(task.isHeavy ? `已將「${task.name}」標記為辛苦工作 🔨 (看板置頂且最後抽)` : `已取消「${task.name}」辛苦工作標記`, '🔨');
         };
 
         const addNewTask = () => {
@@ -1953,7 +1965,7 @@
             id: 'task-' + Date.now(),
             name: name,
             category: cat,
-            count: newTaskCount.value || 1,
+            count: normalizeCount(newTaskCount.value),
             icon: newTaskIcon.value.trim() || autoDetectIcon(name),
             isHeavy: newTaskIsHeavy.value,
             description: newTaskDesc.value.trim()
@@ -1967,10 +1979,14 @@
         };
 
         const updateTaskCount = (task, delta) => {
-          const newCount = task.count + delta;
-          if (newCount >= 1) {
-            task.count = newCount;
+          const newCount = normalizeCount(task.count) + delta;
+          if (newCount < 1) return;
+          const assignedCount = getTaskAssignedMembers(task.id).length;
+          if (newCount < assignedCount) {
+            showToast(`此工作已指派 ${assignedCount} 人，需求人數不可低於 ${assignedCount}`, '⚠️');
+            return;
           }
+          task.count = newCount;
         };
 
         const removeTask = (id) => {
@@ -2023,17 +2039,11 @@
             { wch: 30 }
           ];
 
-          const categoryValidation = (categories.value.length > 0 ? categories.value : allCategoryNames.value).join(',');
-          ws['!dataValidation'] = [
-            { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: `"${categoryValidation}"` },
-            { sqref: 'F2:F100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
-          ];
-
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '掃地工作範本');
 
-          XLSX.writeFile(wb, `掃地工作項目範本_${new Date().toISOString().slice(0,10)}.xlsx`);
-          showToast('已成功下載欄位完整對齊新增表單的 Excel 範本！', '📊');
+          XLSX.writeFile(wb, `掃地工作項目範本_${getLocalDateStamp()}.xlsx`);
+          showToast('已下載 Excel 範本，填好後可用「匯入Excel」載入！', '📊');
         };
 
         const downloadCurrentTasksExcel = () => {
@@ -2063,20 +2073,24 @@
             { wch: 14 },
             { wch: 30 }
           ];
-          const categoryValidation = allCategoryNames.value.join(',');
-          ws['!dataValidation'] = [
-            { sqref: 'B2:B100', type: 'list', operator: 'equal', formula1: `"${categoryValidation}"` },
-            { sqref: 'F2:F100', type: 'list', operator: 'equal', formula1: '"否,是(🔨)"' }
-          ];
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '目前掃地工作');
-          XLSX.writeFile(wb, `目前掃地工作項目_${new Date().toISOString().slice(0,10)}.xlsx`);
+          XLSX.writeFile(wb, `目前掃地工作項目_${getLocalDateStamp()}.xlsx`);
           showToast('已匯出目前所有掃地工作，可編輯後再匯入', '💾');
+        };
+
+        // 移除指向已不存在工作的手動指派（匯入工作／備份後可能失效）
+        const sanitizeMemberAssignments = () => {
+          const ids = new Set(tasks.value.map(t => t.id));
+          members.value.forEach(m => {
+            if (m.assignedTaskId && !ids.has(m.assignedTaskId)) m.assignedTaskId = null;
+          });
         };
 
         const importExcelTemplate = (event) => {
           const file = event.target.files[0];
           if (!file) return;
+          event.target.value = ''; // 清空才能重選同一個檔案
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
@@ -2125,6 +2139,7 @@
 
               if (imported.length > 0) {
                 tasks.value = imported;
+                sanitizeMemberAssignments();
                 showToast(`成功從 Excel (.xlsx) 匯入 ${imported.length} 項工作！`, '🎉');
               } else {
                 showToast('Excel 檔案中無有效工作列', '⚠️');
@@ -2284,33 +2299,30 @@
         const historyLogs = ref([]);
         const historySortMode = ref('SEQUENCE');
         const expandedHistoryIds = ref([]);
-        const customWordTemplate = ref(null);
-        const customExcelTemplate = ref(null);
         const exportSortMode = ref('SEQUENCE');
+
+        // 由工作建立一張結果卡（只含手動指定成員）
+        const buildResultFromTask = (task) => ({
+          taskId: task.id,
+          originalIndex: tasks.value.findIndex(item => item.id === task.id),
+          taskName: task.name,
+          category: task.category || '教室',
+          taskIcon: task.icon,
+          isHeavy: task.isHeavy,
+          description: task.description,
+          requiredCount: task.count,
+          assignedMembers: presentMembers.value
+            .filter(m => m.assignedTaskId === task.id)
+            .map(m => ({ ...m, isManual: true })),
+          isDrawn: false
+        });
 
         const displayTaskCards = computed(() => {
           let list = [];
           if (hasDrawRun.value && currentResults.value.length > 0) {
             list = currentResults.value.filter(item => isCategoryVisible(item.category || '教室'));
           } else {
-            list = activeTasks.value.map(task => {
-              const manualMembers = presentMembers.value
-                .filter(m => m.assignedTaskId === task.id)
-                .map(m => ({ ...m, isManual: true }));
-
-              return {
-                taskId: task.id,
-                originalIndex: tasks.value.findIndex(item => item.id === task.id),
-                taskName: task.name,
-                category: task.category || '教室',
-                taskIcon: task.icon,
-                isHeavy: task.isHeavy,
-                description: task.description,
-                requiredCount: task.count,
-                assignedMembers: manualMembers,
-                isDrawn: false
-              };
-            });
+            list = activeTasks.value.map(buildResultFromTask);
           }
 
           return list.slice().sort((a, b) => {
@@ -2343,6 +2355,31 @@
           });
           exemptMembers.value = exemptMembers.value.filter(member => !member.assignedTaskId);
         };
+
+        // 抽籤結果卡與工作清單同步：抽完後新增的工作補進卡片、刪除的工作移除、名稱／人數等以目前工作為準
+        const syncResultsWithTasks = () => {
+          if (!hasDrawRun.value || currentResults.value.length === 0) return;
+          const taskIds = new Set(tasks.value.map(t => t.id));
+          const kept = currentResults.value.filter(result => taskIds.has(result.taskId));
+          kept.forEach(result => {
+            const task = tasks.value.find(t => t.id === result.taskId);
+            result.originalIndex = tasks.value.indexOf(task);
+            result.taskName = task.name;
+            result.category = task.category || '教室';
+            result.taskIcon = task.icon;
+            result.isHeavy = task.isHeavy;
+            result.description = task.description;
+            result.requiredCount = task.count;
+          });
+          const existing = new Set(kept.map(result => result.taskId));
+          activeTasks.value.forEach(task => {
+            if (!existing.has(task.id)) kept.push(buildResultFromTask(task));
+          });
+          if (kept.length !== currentResults.value.length || kept.some((r, i) => r !== currentResults.value[i])) {
+            currentResults.value = kept;
+          }
+        };
+        watch([tasks, categorySettings], syncResultsWithTasks, { deep: true });
 
         const exemptDisplayList = computed(() => {
           const list = [...nonPresentMembers.value];
@@ -2412,39 +2449,74 @@
           return arr;
         };
 
-        // 按一次獨立抽出一名同學 (修訂：打破一般與辛苦界線，全工作無差別純隨機抽)
+        // 上一次抽籤結果對照表（給不重複／不悲情／大風吹用）
+        const getLastDrawMaps = () => {
+          const lastLog = historyLogs.value[0];
+          const maps = { lastLog, lastHeavyMembersMap: {}, lastTaskMap: {}, lastCategoryMap: {} };
+          if (lastLog && lastLog.results) {
+            lastLog.results.forEach(res => {
+              (res.assignedMembers || []).forEach(m => {
+                maps.lastTaskMap[m.id] = res.taskId;
+                maps.lastCategoryMap[m.id] = res.category;
+                if (res.isHeavy) maps.lastHeavyMembersMap[m.id] = true;
+              });
+            });
+          }
+          return maps;
+        };
+
+        // 依偏好從已洗牌的候選池挑一位，回傳索引；找不到符合條件者就取第 0 位
+        // task 可以是工作（id/category）或結果卡（taskId/category）
+        const pickCandidateIndex = (pool, task, maps) => {
+          const { lastLog, lastHeavyMembersMap, lastTaskMap, lastCategoryMap } = maps;
+          const taskId = task.taskId || task.id;
+          const category = task.category || '教室';
+          if (avoidSadness.value && task.isHeavy) {
+            const idx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
+            if (idx !== -1) return idx;
+          } else if (bigBlowMode.value && lastLog) {
+            const idx = pool.findIndex(m => lastCategoryMap[m.id] !== category);
+            if (idx !== -1) return idx;
+          } else if (avoidRepeat.value && lastLog) {
+            const idx = pool.findIndex(m => lastTaskMap[m.id] !== taskId);
+            if (idx !== -1) return idx;
+          }
+          return 0;
+        };
+
+        // 抽籤收尾：寫時間戳、放彩帶、存歷史（抽全部與抽一人抽滿時共用）
+        const finishDraw = (message) => {
+          drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
+          if (enableConfetti.value && typeof confetti === 'function') {
+            confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+          }
+          saveToHistory();
+          showToast(message, '🎉');
+        };
+
+        // 按一次獨立抽出一名同學 (打破一般與辛苦界線，全工作無差別純隨機抽)
+        // 全部填滿或已無人可抽時自動收尾：記輪空名單、存入歷史
         const drawSingleMember = async () => {
           if (isDrawing.value) return;
           if (presentMembers.value.length === 0) {
             showToast('尚無應抽籤成員可進行抽籤', '⚠️');
             return;
           }
+          if (activeTasks.value.length === 0) {
+            showToast('請先新增至少一項掃地工作項目', '⚠️');
+            return;
+          }
 
           if (!hasDrawRun.value || currentResults.value.length === 0) {
             hasDrawRun.value = true;
-            currentResults.value = activeTasks.value.map(task => {
-              const manualMembers = presentMembers.value
-                .filter(m => m.assignedTaskId === task.id)
-                .map(m => ({ ...m, isManual: true }));
-
-              return {
-                taskId: task.id,
-                originalIndex: tasks.value.findIndex(item => item.id === task.id),
-                taskName: task.name,
-                category: task.category || '教室',
-                taskIcon: task.icon,
-                isHeavy: task.isHeavy,
-                description: task.description,
-                requiredCount: task.count,
-                assignedMembers: manualMembers,
-                isDrawn: false
-              };
-            });
+            currentResults.value = activeTasks.value.map(buildResultFromTask);
+          } else {
+            syncResultsWithTasks();
           }
 
           const alreadyAssignedIds = new Set();
           currentResults.value.forEach(res => {
-            res.assignedMembers.forEach(m => alreadyAssignedIds.add(m.id));
+            (res.assignedMembers || []).forEach(m => alreadyAssignedIds.add(m.id));
           });
 
           const availablePool = presentMembers.value.filter(m => !alreadyAssignedIds.has(m.id));
@@ -2455,7 +2527,6 @@
 
           // 尋找所有未滿額的工作項目 (無分一般與辛苦 🔨，全體隨機抽)
           const emptyCards = displayTaskCards.value.filter(c => c.assignedMembers.length < c.requiredCount);
-
           if (emptyCards.length === 0) {
             showToast('所有工作項目人數皆已填滿！', '🎉');
             return;
@@ -2467,49 +2538,40 @@
           isDrawing.value = true;
           activeDrawingTaskId.value = targetTaskCard.taskId;
 
-          await new Promise(resolve => setTimeout(resolve, 500));
+          try {
+            if (drawAnimationType.value !== 'none') {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
 
-          const lastLog = historyLogs.value[0];
-          const lastHeavyMembersMap = {};
-          const lastTaskMap = {};
-          const lastCategoryMap = {};
-          if (lastLog && lastLog.results) {
-            lastLog.results.forEach(res => {
-              res.assignedMembers.forEach(m => {
-                lastTaskMap[m.id] = res.taskId;
-                lastCategoryMap[m.id] = res.category;
-                if (res.isHeavy) lastHeavyMembersMap[m.id] = true;
-              });
-            });
+            const pool = shuffleArray(availablePool);
+            const picked = pool[pickCandidateIndex(pool, targetTaskCard, getLastDrawMaps())];
+            const resItem = currentResults.value.find(r => r.taskId === targetTaskCard.taskId);
+            if (resItem) {
+              resItem.assignedMembers.push({ ...picked, isManual: false });
+            }
+            drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
+            const pickText = `🙏 已為【${targetTaskCard.taskName}】抽中：${picked.seatNo ? '#' + picked.seatNo + ' ' : ''}${picked.name}`;
+
+            const remainingPool = availablePool.filter(m => m.id !== picked.id);
+            const stillEmpty = displayTaskCards.value.some(c => c.assignedMembers.length < c.requiredCount);
+            if (!stillEmpty) {
+              exemptMembers.value = remainingPool;
+              finishDraw(`${pickText}。所有工作已填滿，結果已存入歷史紀錄！`);
+            } else if (remainingPool.length === 0) {
+              exemptMembers.value = [];
+              finishDraw(`${pickText}。全體成員皆已抽完（仍有缺額），結果已存入歷史紀錄`);
+            } else {
+              showToast(pickText, '🎉');
+            }
+          } finally {
+            activeDrawingTaskId.value = null;
+            isDrawing.value = false;
           }
-
-          let pool = shuffleArray(availablePool);
-          let candidateIdx = 0;
-          if (avoidSadness.value && targetTaskCard.isHeavy) {
-            const nonHeavyCandidateIdx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
-            if (nonHeavyCandidateIdx !== -1) candidateIdx = nonHeavyCandidateIdx;
-          } else if (bigBlowMode.value && lastLog) {
-            const diffCatIdx = pool.findIndex(m => lastCategoryMap[m.id] !== targetTaskCard.category);
-            if (diffCatIdx !== -1) candidateIdx = diffCatIdx;
-          } else if (avoidRepeat.value && lastLog) {
-            const nonRepeatIdx = pool.findIndex(m => lastTaskMap[m.id] !== targetTaskCard.taskId);
-            if (nonRepeatIdx !== -1) candidateIdx = nonRepeatIdx;
-          }
-
-          const picked = pool[candidateIdx];
-          const resItem = currentResults.value.find(r => r.taskId === targetTaskCard.taskId);
-          if (resItem) {
-            resItem.assignedMembers.push({ ...picked, isManual: false });
-          }
-
-          activeDrawingTaskId.value = null;
-          isDrawing.value = false;
-          drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
-          showToast(`🙏 已為【${targetTaskCard.taskName}】抽中：${picked.seatNo ? '#' + picked.seatNo + ' ' : ''}${picked.name}`, '🎉');
         };
 
-        // 全體抽籤 (抽全部按鈕)
+        // 全體抽籤 (抽全部按鈕)：只補缺額——已由「抽一人」抽出或手動指定的成員保留；要整批重抽請先按 🗑️ 清除結果
         const startDraw = async () => {
+          if (isDrawing.value) return;
           if (presentMembers.value.length === 0) {
             showToast('尚無應抽籤成員可進行抽籤', '⚠️');
             return;
@@ -2523,106 +2585,60 @@
           hasDrawRun.value = true;
           exemptMembers.value = [];
 
-          currentResults.value = activeTasks.value.map(task => {
-            const manualMembers = presentMembers.value
-              .filter(m => m.assignedTaskId === task.id)
-              .map(m => ({ ...m, isManual: true }));
-
-            return {
-              taskId: task.id,
-              originalIndex: tasks.value.findIndex(item => item.id === task.id),
-              taskName: task.name,
-              category: task.category || '教室',
-              taskIcon: task.icon,
-              isHeavy: task.isHeavy,
-              description: task.description,
-              requiredCount: task.count,
-              assignedMembers: manualMembers,
-              isDrawn: false
-            };
-          });
-
-          const unassignedPool = presentMembers.value.filter(m => !activeTaskIds.value.has(m.assignedTaskId));
-          let pool = shuffleArray(unassignedPool);
-
-          const lastLog = historyLogs.value[0];
-          const lastHeavyMembersMap = {};
-          const lastTaskMap = {};
-          const lastCategoryMap = {};
-
-          if (lastLog && lastLog.results) {
-            lastLog.results.forEach(res => {
-              res.assignedMembers.forEach(m => {
-                lastTaskMap[m.id] = res.taskId;
-                lastCategoryMap[m.id] = res.category;
-                if (res.isHeavy) {
-                  lastHeavyMembersMap[m.id] = true;
-                }
-              });
-            });
+          if (currentResults.value.length === 0) {
+            currentResults.value = activeTasks.value.map(buildResultFromTask);
+          } else {
+            syncResultsWithTasks();
+            syncManualAssignmentsToResults();
           }
 
-          const taskExecutionOrder = [...activeTasks.value].sort((a, b) => {
-            if (!a.isHeavy && b.isHeavy) return -1;
-            if (a.isHeavy && !b.isHeavy) return 1;
-            return 0;
-          });
+          try {
+            const alreadyAssignedIds = new Set();
+            currentResults.value.forEach(res => {
+              (res.assignedMembers || []).forEach(m => alreadyAssignedIds.add(m.id));
+            });
+            const unassignedPool = presentMembers.value.filter(m => !activeTaskIds.value.has(m.assignedTaskId) && !alreadyAssignedIds.has(m.id));
+            const pool = shuffleArray(unassignedPool);
+            const lastDrawMaps = getLastDrawMaps();
 
-          const totalTasksCount = taskExecutionOrder.length;
-          const delayPerTaskMs = drawAnimationType.value === 'none' ? 50 : Math.max(200, (drawDuration.value * 1000) / totalTasksCount);
+            // 一般工作先抽，辛苦工作壓軸
+            const taskExecutionOrder = [...activeTasks.value].sort((a, b) => {
+              if (!a.isHeavy && b.isHeavy) return -1;
+              if (a.isHeavy && !b.isHeavy) return 1;
+              return 0;
+            });
 
-          for (let index = 0; index < totalTasksCount; index++) {
-            const task = taskExecutionOrder[index];
-            activeDrawingTaskId.value = task.id;
+            const totalTasksCount = taskExecutionOrder.length;
+            const delayPerTaskMs = Math.max(200, (drawDuration.value * 1000) / totalTasksCount);
 
-            if (drawAnimationType.value !== 'none') {
-              await new Promise(resolve => setTimeout(resolve, delayPerTaskMs));
-            }
+            for (let index = 0; index < totalTasksCount; index++) {
+              const task = taskExecutionOrder[index];
+              const targetResItem = currentResults.value.find(r => r.taskId === task.id);
+              if (!targetResItem) continue;
+              activeDrawingTaskId.value = task.id;
 
-            const assigned = presentMembers.value
-              .filter(m => m.assignedTaskId === task.id)
-              .map(m => ({ ...m, isManual: true }));
+              if (drawAnimationType.value !== 'none') {
+                await new Promise(resolve => setTimeout(resolve, delayPerTaskMs));
+              }
 
-            const neededCount = Math.max(0, task.count - assigned.length);
+              const assigned = [...(targetResItem.assignedMembers || [])];
+              const neededCount = Math.max(0, task.count - assigned.length);
 
-            for (let i = 0; i < neededCount; i++) {
-              if (pool.length > 0) {
-                let candidateIdx = 0;
-
-                if (avoidSadness.value && task.isHeavy) {
-                  const nonHeavyCandidateIdx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
-                  if (nonHeavyCandidateIdx !== -1) candidateIdx = nonHeavyCandidateIdx;
-                } else if (bigBlowMode.value && lastLog) {
-                  const diffCatIdx = pool.findIndex(m => lastCategoryMap[m.id] !== task.category);
-                  if (diffCatIdx !== -1) candidateIdx = diffCatIdx;
-                } else if (avoidRepeat.value && lastLog) {
-                  const nonRepeatIdx = pool.findIndex(m => lastTaskMap[m.id] !== task.id);
-                  if (nonRepeatIdx !== -1) candidateIdx = nonRepeatIdx;
-                }
-
-                const picked = pool.splice(candidateIdx, 1)[0];
+              for (let i = 0; i < neededCount && pool.length > 0; i++) {
+                const picked = pool.splice(pickCandidateIndex(pool, task, lastDrawMaps), 1)[0];
                 assigned.push({ ...picked, isManual: false });
               }
-            }
 
-            const targetResItem = currentResults.value.find(r => r.taskId === task.id);
-            if (targetResItem) {
               targetResItem.assignedMembers = assigned;
               targetResItem.isDrawn = true;
             }
+
+            exemptMembers.value = pool;
+            finishDraw('全體抽籤完成！辛苦工作已壓軸揭曉！');
+          } finally {
+            activeDrawingTaskId.value = null;
+            isDrawing.value = false;
           }
-
-          activeDrawingTaskId.value = null;
-          exemptMembers.value = pool;
-          isDrawing.value = false;
-          drawTimestamp.value = new Date().toLocaleString('zh-TW', { hour12: false });
-
-          if (enableConfetti.value && typeof confetti === 'function') {
-            confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
-          }
-
-          saveToHistory();
-          showToast('全體抽籤完成！辛苦工作已壓軸揭曉！', '🎉');
         };
 
         const confirmClearDrawResults = () => {
@@ -2707,7 +2723,7 @@
               totalPresent: source.totalPresent || 0,
               results: prepareExportTaskList(source.results, exportSortMode.value),
               exemptMembers: getSortedHistoryMembers(source.exemptMembers || []),
-              fileSuffix: source.timestamp ? source.timestamp.replace(/[\\/:*?"<>|\s]+/g, '_') : new Date().toISOString().slice(0, 10)
+              fileSuffix: source.timestamp ? source.timestamp.replace(/[\\/:*?"<>|\s]+/g, '_') : getLocalDateStamp()
             };
           }
 
@@ -2716,7 +2732,7 @@
             totalPresent: presentMembers.value.length,
             results: prepareExportTaskList(displayTaskCards.value, exportSortMode.value),
             exemptMembers: [...exemptDisplayList.value],
-            fileSuffix: new Date().toISOString().slice(0, 10)
+            fileSuffix: getLocalDateStamp()
           };
         };
 
@@ -2767,35 +2783,30 @@
           `;
         };
 
-        const getExportDocumentHtml = (payload) => `
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>掃地工作分配表</title>
-              <style>
-                @page { size: A4 landscape; margin: 8mm; }
-                body { margin: 0; background: #ffffff; color: #1e293b; font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
-                .export-sheet { width: 277mm; box-sizing: border-box; padding: 8mm; background: #ffffff; }
-                .export-header { display: table; width: 100%; border-bottom: 2px solid #0f766e; padding-bottom: 6px; margin-bottom: 8px; }
-                .export-header > div { display: table-cell; vertical-align: middle; }
-                h1 { color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; }
-                p { font-size: 10.5px; color: #475569; margin: 3px 0 0; }
-                .summary { text-align: right; font-size: 10.5px; font-weight: 700; color: #0f766e; white-space: nowrap; }
-                .task-export-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 10.5px; }
-                .task-cell { width: 50%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; vertical-align: top; page-break-inside: avoid; }
-                .task-cell.empty { border: 0; }
-                .task-head { font-weight: 800; color: #0f172a; }
-                .task-index { display: inline-block; min-width: 20px; text-align: center; color: #0f766e; }
-                .task-title { margin-left: 3px; }
-                .heavy { color: #b45309; font-weight: 800; margin-left: 4px; }
-                .task-meta { color: #64748b; font-size: 9.5px; margin-top: 3px; }
-                .task-members { color: #0f172a; font-weight: 700; line-height: 1.55; margin-top: 4px; }
-                .exempt-box { margin: 8px 4px 0; font-size: 10.5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; }
-                .footer-note { margin-top: 6px; text-align: right; color: #94a3b8; font-size: 9px; }
-              </style>
-            </head>
-            <body>${buildExportHtml(payload)}</body>
-          </html>
+        // 匯出用樣式：全部限定在 .export-sheet 底下，暫時插入主頁面產圖時不會影響站內 body／h1／p 樣式
+        const EXPORT_SHEET_CSS = `
+          .export-sheet { width: 277mm; box-sizing: border-box; padding: 8mm; background: #ffffff; color: #1e293b; font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+          .export-sheet .export-header { display: table; width: 100%; border-bottom: 2px solid #0f766e; padding-bottom: 6px; margin-bottom: 8px; }
+          .export-sheet .export-header > div { display: table-cell; vertical-align: middle; }
+          .export-sheet h1 { color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; }
+          .export-sheet p { font-size: 10.5px; color: #475569; margin: 3px 0 0; }
+          .export-sheet .summary { text-align: right; font-size: 10.5px; font-weight: 700; color: #0f766e; white-space: nowrap; }
+          .export-sheet .task-export-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 10.5px; }
+          .export-sheet .task-cell { width: 50%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; vertical-align: top; page-break-inside: avoid; }
+          .export-sheet .task-cell.empty { border: 0; }
+          .export-sheet .task-head { font-weight: 800; color: #0f172a; }
+          .export-sheet .task-index { display: inline-block; min-width: 20px; text-align: center; color: #0f766e; }
+          .export-sheet .task-title { margin-left: 3px; }
+          .export-sheet .heavy { color: #b45309; font-weight: 800; margin-left: 4px; }
+          .export-sheet .task-meta { color: #64748b; font-size: 9.5px; margin-top: 3px; }
+          .export-sheet .task-members { color: #0f172a; font-weight: 700; line-height: 1.55; margin-top: 4px; }
+          .export-sheet .exempt-box { margin: 8px 4px 0; font-size: 10.5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; }
+          .export-sheet .footer-note { margin-top: 6px; text-align: right; color: #94a3b8; font-size: 9px; }
+        `;
+        // 只給獨立文件（Word .doc）用的整頁設定
+        const EXPORT_PAGE_CSS = `
+          @page { size: A4 landscape; margin: 8mm; }
+          body { margin: 0; background: #ffffff; }
         `;
 
         const createExportElement = (payload) => {
@@ -2805,12 +2816,12 @@
           wrapper.style.top = '0';
           wrapper.style.width = '1123px';
           wrapper.style.background = '#ffffff';
-          const doc = document.implementation.createHTMLDocument('');
-          doc.documentElement.innerHTML = getExportDocumentHtml(payload);
-          const style = doc.head.querySelector('style');
-          const sheet = doc.body.querySelector('.export-sheet');
-          if (style) wrapper.appendChild(style.cloneNode(true));
-          if (sheet) wrapper.appendChild(sheet.cloneNode(true));
+          const style = document.createElement('style');
+          style.textContent = EXPORT_SHEET_CSS;
+          wrapper.appendChild(style);
+          const holder = document.createElement('div');
+          holder.innerHTML = buildExportHtml(payload);
+          wrapper.appendChild(holder.firstElementChild);
           document.body.appendChild(wrapper);
           return wrapper;
         };
@@ -2849,7 +2860,10 @@
         };
 
         const downloadResultImage = (source = null) => {
-          if (typeof html2canvas !== 'function') return;
+          if (typeof html2canvas !== 'function') {
+            showToast('圖片匯出模組未載入', '❌');
+            return;
+          }
           const payload = getExportPayload(source);
           const wrapper = createExportElement(payload);
           showToast('正在生成高畫質圖片...', '⏳');
@@ -2858,12 +2872,11 @@
             link.download = `本班掃地工作分配表_${payload.fileSuffix}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-            document.body.removeChild(wrapper);
             showToast('圖片下載成功！', '🖼️');
-          }).catch(() => {
-            document.body.removeChild(wrapper);
+          }).catch((err) => {
+            console.error(err);
             showToast('圖片下載失敗', '❌');
-          });
+          }).finally(() => wrapper.remove());
         };
 
         const exportPDF = (source = null) => {
@@ -2887,12 +2900,11 @@
             const y = (pageHeight - renderHeight) / 2;
             pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight);
             pdf.save(`本班掃地工作分配表_${payload.fileSuffix}.pdf`);
-            document.body.removeChild(wrapper);
             showToast('已匯出 PDF 檔案！', '📄');
-          }).catch(() => {
-            document.body.removeChild(wrapper);
+          }).catch((err) => {
+            console.error(err);
             showToast('PDF 匯出失敗', '❌');
-          });
+          }).finally(() => wrapper.remove());
         };
 
         const exportExcel = (source = null) => {
@@ -2940,33 +2952,9 @@
           const payload = getExportPayload(source);
           let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
           <head><meta charset='utf-8'><title>掃地工作分配表</title>
-          <style>
-            @page { size: A4 landscape; margin: 8mm; }
-            body { font-family: 'Microsoft JhengHei', sans-serif; padding: 0; color: #1e293b; }
-            .export-sheet { width: 277mm; box-sizing: border-box; padding: 8mm; background: #ffffff; }
-            .export-header { display: table; width: 100%; border-bottom: 2px solid #0f766e; padding-bottom: 6px; margin-bottom: 8px; }
-            .export-header > div { display: table-cell; vertical-align: middle; }
-            h1 { color: #0f766e; font-size: 20px; font-weight: 800; margin: 0; }
-            p { font-size: 10.5px; color: #475569; margin: 3px 0 0; }
-            .summary { text-align: right; font-size: 10.5px; font-weight: 700; color: #0f766e; white-space: nowrap; }
-            .task-export-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 10.5px; }
-            .task-cell { width: 50%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; vertical-align: top; page-break-inside: avoid; }
-            .task-cell.empty { border: 0; }
-            .task-head { font-weight: 800; color: #0f172a; }
-            .task-index { display: inline-block; min-width: 20px; text-align: center; color: #0f766e; }
-            .task-title { margin-left: 3px; }
-            .heavy { color: #b45309; font-weight: 800; margin-left: 4px; }
-            .task-meta { color: #64748b; font-size: 9.5px; margin-top: 3px; }
-            .task-members { color: #0f172a; font-weight: 700; line-height: 1.55; margin-top: 4px; }
-            .exempt-box { margin: 8px 4px 0; font-size: 10.5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; }
-            .footer-note { margin-top: 6px; text-align: right; color: #94a3b8; font-size: 9px; }
-          </style></head><body>`;
+          <style>${EXPORT_PAGE_CSS}${EXPORT_SHEET_CSS}</style></head><body>`;
 
-          if (customWordTemplate.value) {
-            html += customWordTemplate.value;
-          } else {
-            html += buildExportHtml(payload);
-          }
+          html += buildExportHtml(payload);
 
           html += `</body></html>`;
           const blob = new Blob([html], { type: 'application/msword' });
@@ -2974,27 +2962,10 @@
           showToast('已成功匯出 Word (.doc)！', '📝');
         };
 
-        const handleWordTemplateUpload = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            customWordTemplate.value = event.target.result;
-            showToast('已成功上傳自訂 Word 範本！', '✅');
-          };
-          reader.readAsText(file);
-        };
-
-        const handleExcelTemplateUpload = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          customExcelTemplate.value = file.name;
-          showToast(`已成功紀錄自訂 Excel 範本：${file.name}`, '✅');
-        };
-
         // 5. 持久化
         const STORAGE_KEY = 'cleaning_task_helper_data_v8';
 
+        let saveFailed = false;
         const saveData = () => {
           const data = {
             isDarkMode: isDarkMode.value,
@@ -3011,12 +2982,17 @@
             enableConfetti: enableConfetti.value,
             drawDuration: drawDuration.value,
             drawAnimationType: drawAnimationType.value,
-            customWordTemplate: customWordTemplate.value,
-            customExcelTemplate: customExcelTemplate.value,
             categorySettings: categorySettings.value,
             exportSortMode: exportSortMode.value
           };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            saveFailed = false;
+          } catch (e) {
+            console.error(e);
+            if (!saveFailed) showToast('資料儲存失敗：瀏覽器儲存空間不足或已停用，請先下載備份', '❌');
+            saveFailed = true;
+          }
         };
 
         const loadData = () => {
@@ -3041,10 +3017,9 @@
               if (data.enableConfetti !== undefined) enableConfetti.value = data.enableConfetti;
               if (data.drawDuration !== undefined) drawDuration.value = data.drawDuration;
               if (data.drawAnimationType !== undefined) drawAnimationType.value = data.drawAnimationType;
-              if (data.customWordTemplate !== undefined) customWordTemplate.value = data.customWordTemplate;
-              if (data.customExcelTemplate !== undefined) customExcelTemplate.value = data.customExcelTemplate;
               if (data.categorySettings !== undefined) categorySettings.value = normalizeCategorySettings(data.categorySettings);
               if (data.exportSortMode !== undefined) exportSortMode.value = data.exportSortMode;
+              sanitizeMemberAssignments();
               ensureSelectedCategory();
             } catch (e) {
               console.error(e);
@@ -3062,7 +3037,7 @@
           }
         };
 
-        watch([members, tasks, historyLogs, currentResults, avoidRepeat, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode, categorySettings, exportSortMode, customWordTemplate, customExcelTemplate], () => {
+        watch([members, tasks, historyLogs, currentResults, exemptMembers, drawTimestamp, hasDrawRun, avoidRepeat, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode, categorySettings, exportSortMode], () => {
           saveData();
         }, { deep: true });
 
@@ -3076,8 +3051,6 @@
             historyLogs.value = [];
             hasDrawRun.value = false;
             drawTimestamp.value = '';
-            customWordTemplate.value = null;
-            customExcelTemplate.value = null;
             categorySettings.value = cloneDefaultCategorySettings();
             exportSortMode.value = 'SEQUENCE';
             ensureSelectedCategory();
@@ -3106,13 +3079,29 @@
             enableConfetti.value = DEFAULT_DRAW_SETTINGS.enableConfetti;
             drawDuration.value = DEFAULT_DRAW_SETTINGS.drawDuration;
             drawAnimationType.value = DEFAULT_DRAW_SETTINGS.drawAnimationType;
-            customWordTemplate.value = null;
-            customExcelTemplate.value = null;
             categorySettings.value = cloneDefaultCategorySettings();
             exportSortMode.value = 'SEQUENCE';
             ensureSelectedCategory();
             showToast('已恢復程式預設值', '🔄');
           }
+        };
+
+        const getDrawSettings = () => ({
+          avoidRepeat: avoidRepeat.value,
+          avoidSadness: avoidSadness.value,
+          bigBlowMode: bigBlowMode.value,
+          enableConfetti: enableConfetti.value,
+          drawDuration: drawDuration.value,
+          drawAnimationType: drawAnimationType.value
+        });
+        const applyDrawSettings = (settings) => {
+          if (!settings || typeof settings !== 'object') return;
+          if (typeof settings.avoidRepeat === 'boolean') avoidRepeat.value = settings.avoidRepeat;
+          if (typeof settings.avoidSadness === 'boolean') avoidSadness.value = settings.avoidSadness;
+          if (typeof settings.bigBlowMode === 'boolean') bigBlowMode.value = settings.bigBlowMode;
+          if (typeof settings.enableConfetti === 'boolean') enableConfetti.value = settings.enableConfetti;
+          if ([6, 12, 18].includes(Number(settings.drawDuration))) drawDuration.value = Number(settings.drawDuration);
+          if (['shuffle', 'flip', 'glow', 'bounce', 'dice', 'none'].includes(settings.drawAnimationType)) drawAnimationType.value = settings.drawAnimationType;
         };
 
         const exportBackup = () => {
@@ -3122,13 +3111,14 @@
             historyLogs: historyLogs.value,
             categorySettings: categorySettings.value,
             exportSortMode: exportSortMode.value,
+            drawSettings: getDrawSettings(),
             exportedAt: new Date().toISOString()
           };
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `掃地小幫手_備份檔_${new Date().toISOString().slice(0,10)}.json`;
+          a.download = `掃地小幫手_備份檔_${getLocalDateStamp()}.json`;
           a.click();
           URL.revokeObjectURL(url);
           showToast('備份檔案已下載', '📥');
@@ -3137,15 +3127,26 @@
         const importBackup = (event) => {
           const file = event.target.files[0];
           if (!file) return;
+          event.target.value = ''; // 清空才能重選同一個檔案
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
               const data = JSON.parse(e.target.result);
-              if (data.members) members.value = data.members;
-              if (data.tasks) tasks.value = data.tasks;
-              if (data.historyLogs) historyLogs.value = data.historyLogs;
+              if (!data || typeof data !== 'object' || (!Array.isArray(data.members) && !Array.isArray(data.tasks))) {
+                throw new Error('備份檔缺少 members / tasks');
+              }
+              if (Array.isArray(data.members)) members.value = data.members;
+              if (Array.isArray(data.tasks)) tasks.value = data.tasks;
+              if (Array.isArray(data.historyLogs)) historyLogs.value = data.historyLogs;
               if (data.categorySettings !== undefined) categorySettings.value = normalizeCategorySettings(data.categorySettings);
               if (data.exportSortMode !== undefined) exportSortMode.value = data.exportSortMode;
+              applyDrawSettings(data.drawSettings);
+              sanitizeMemberAssignments();
+              // 匯入後名單／工作已換，舊的抽籤結果不再對應，退回待抽籤狀態（歷史紀錄照備份內容）
+              currentResults.value = [];
+              exemptMembers.value = [];
+              hasDrawRun.value = false;
+              drawTimestamp.value = '';
               ensureSelectedCategory();
               showToast('成功匯入備份資料！', '🎉');
             } catch (err) {
@@ -3213,6 +3214,7 @@
           categoryStats,
           filteredTasks,
           sortedFilteredTasks,
+          getTaskSequenceNo,
           totalRequiredSlots,
           matchStatus,
           toggleTaskHeavy,
@@ -3285,12 +3287,6 @@
           exportPDF,
           exportExcel,
           exportWord,
-
-          // Custom templates
-          customWordTemplate,
-          customExcelTemplate,
-          handleWordTemplateUpload,
-          handleExcelTemplateUpload,
 
           // System
           resetAllData,

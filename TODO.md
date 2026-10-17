@@ -1,0 +1,61 @@
+# TODO / 巡檢記錄
+
+## 2026-10-18 程式巡檢（v2.9 → v2.10）
+
+全檔 `index.html`（3305 行）逐行讀過一遍，先列問題給使用者、同意後一次修改，本機實測後直接 push `main`。
+
+### 修了什麼（對應巡檢報告編號）
+
+| # | 問題 | 修法 |
+|---|---|---|
+| 1 | 類別圖示重新整理後消失 | `normalizeCategorySettings` 補還原 `icon` |
+| 2 | 「抽一人」抽完整班不存歷史、不算輪空 | 全部填滿或已無人可抽時自動收尾：記 `exemptMembers`、`saveToHistory`、彩帶（與抽全部共用 `finishDraw`） |
+| 3 | 「抽全部」把「抽一人」已抽的結果丟掉 | 改為**只補缺額**：保留已抽出／手動指定的成員；要整批重抽先按 🗑️ 清除 |
+| 4 | 抽完後新增／刪除的工作不同步進結果卡 | 新增 `syncResultsWithTasks`，`watch([tasks, categorySettings])` 自動同步（補卡、移除、名稱人數以目前工作為準） |
+| 5 | 批次貼名單用 `\s` 切割，「1 王大明」「1<Tab>王大明」被拆成兩人 | 只用換行／逗號／頓號／分號切人；解析共用 `parseMemberInput`（`^(\d+)[號.\s:-]*(.+)$`） |
+| 6 | `localStorage.setItem` 沒 try/catch，超配額後每次存檔靜默失敗 | 包 try/catch，失敗提示一次（成功後重置） |
+| 7 | `<input type="file">` 沒清 `value`，同檔重選不觸發 | 匯入 Excel／JSON 讀到檔案後立刻清空 |
+| 8 | 自訂 Word／Excel 匯出範本是空殼（Word 只吐範本原文不帶資料、Excel 只存檔名） | **整段移除**（設定頁區塊改名「匯出設定」只留排序；相關 ref／handler／持久化欄位全拿掉） |
+| 9 | Excel 範本的下拉選單不存在（SheetJS 社群版 0.18.5 忽略 `!dataValidation`，已實測） | 移除無效設定與 README 宣稱 |
+| 10 | 「名單管理」分頁作用中圖示白色壓白底 | 拿掉 svg 寫死的 `text-white`，改繼承按鈕文字色 |
+| 11 | 匯出 PNG／PDF 期間匯出樣式污染全站 `body`／`h1`／`p` | 樣式抽成 `EXPORT_SHEET_CSS`（全部限定 `.export-sheet`）＋ `EXPORT_PAGE_CSS`（只給 Word 文件）；wrapper 改 `finally` 移除 |
+| 12 | 需求人數可負數／小數；可調到低於已指派人數 | `normalizeCount`；`updateTaskCount`／`saveEditTask` 低於已指派人數時擋下並提示 |
+| 13 | 工作列表序號（辛苦優先排序）與匯出序號對不上 | 列表改原始順序、序號用 `getTaskSequenceNo`（在全部工作中的位置）；辛苦工作只在抽籤看板置頂 |
+| 14 | 同名同學不能並存；類別改名失敗輸入框不還原 | 重複判定改「座號＋姓名」；改名 `@change` 後把輸入框設回 `cat.name` |
+| 15 | 抽籤中途 throw 會讓 `isDrawing` 卡住 | 兩個抽籤函式包 `try/finally` |
+| 16 | 檔名日期用 UTC | `getLocalDateStamp()`（本地日期） |
+| 17 | 備份不含抽籤偏好；匯入不清失效指派 | 備份加 `drawSettings`；匯入驗證結構、`applyDrawSettings`、`sanitizeMemberAssignments`、並退回待抽籤狀態（舊結果已不對應新名單） |
+| 18 | `vue@3` 未釘版本 | 改 `vue@3.5.13/dist/vue.global.prod.js` |
+| 19 | README 連到不存在的 LICENSE | 補 MIT `LICENSE` |
+| – | 連續 toast 會被前一個計時器提早清掉 | `clearTimeout` 再排新的 |
+| – | 三處重複的結果卡建構、兩處重複的偏好挑人邏輯 | 抽成 `buildResultFromTask`、`getLastDrawMaps`、`pickCandidateIndex` |
+
+### 不得被推翻的判斷（及理由）
+
+- **抽全部只補缺額**：使用者 2026-10-18 裁示。要整批重抽先按 🗑️，README 已寫明。
+- **自訂範本功能移除而非修好**：使用者裁示；功能從未真正運作，留著只會誤導。
+- **匯入備份後清掉目前抽籤結果**：我的判斷（使用者未逐項點頭）——結果卡存的是成員快照，名單換了就不對應；歷史紀錄照備份內容。若不同意可只拿掉 `importBackup` 裡那四行重置。
+
+### 驗證方式
+
+- JS 語法：抽出 `<script>` → `node --check`。
+- 內建瀏覽器實測（本機 node 靜態伺服器 + 用 Vue dev build 的測試副本以存取 `setupState`）：
+  名單解析（Tab／空格／號／重複略過／同名不同座號）、負數小數人數、類別圖示存檔＋重整保留、
+  抽一人 17 次自動收尾（歷史 1 筆、輪空 3 人）、清除後抽一人 2 次 → 新增工作自動補卡 → 抽全部保留既有 2 人且無重複、
+  刪工作卡片同步移除、人數低於已指派被擋（＋／－與編輯）、PNG 匯出期間 style 只含 `.export-sheet` 規則且完成後移除、
+  Word blob 含限定樣式與工作名、Excel／範本檔名為本地日期、備份含偏好 → 匯入還原偏好／清失效指派／退回待抽籤、壞檔提示、
+  localStorage 丟錯提示一次且恢復後續存、類別改名為空時輸入框還原、導航圖示（截圖確認）。
+- **未實測**：真實檔案下載（有攔掉 `a.click()`）、LINE 複製（需安全環境與手勢）、PDF 實際頁面排版、Word 在 MS Word 內的呈現。
+
+### 看到但沒改（可日後處理）
+
+- 偏好邏輯是 `else if` 鏈：預設全開時「不重複」永遠不會生效（大風吹找不到人就直接取第 0 位，不會再試不重複）。可改成逐層 fallback。
+- Tailwind 用 Play CDN（執行期編譯、console 警告、約 300 KB）；要換得加建置流程。
+- PDF 一律縮成一頁，工作超過 16 項字會很小；可分頁。
+- 彈窗沒有 Esc／點背景關閉。
+- 歷史紀錄的「紀錄 #N」是倒數編號，刪除中間一筆後會變動。
+- 暗色模式沒跟隨系統 `prefers-color-scheme`；首次載入會閃一下亮色。
+- 抽完後把成員標成免掃／刪除，結果卡上仍留著該成員（結果卡是快照，只同步了工作不同步成員）。
+- 工作全部被隱藏類別吃掉時，「抽一人」會提示「所有工作項目人數皆已填滿」而非「請先新增工作」。
+- `selectedCategory === 'ALL'` 分支沒有 UI 會觸發。
+- 看板的「共 N 項」用 `tasks.length`（含隱藏類別），「工作所需人數」只算可見類別。
