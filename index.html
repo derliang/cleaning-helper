@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.10</title>
+  <title>掃地工作小幫手 v2.11</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -134,7 +134,7 @@
             <div class="min-w-0">
               <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                 <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.10</span>
+                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.11</span>
               </h1>
               <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
             </div>
@@ -391,11 +391,23 @@
                       <span v-if="item.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold text-lg animate-pulse">🔨</span>
                     </span>
                     
-                    <span 
-                      :class="getCategoryBadgeClass(item.category)"
-                      class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none flex-shrink-0"
-                    >
-                      {{ item.category || '教室' }} ({{ item.requiredCount }}人)
+                    <span class="flex items-center gap-1.5 flex-shrink-0">
+                      <span
+                        :class="getCategoryBadgeClass(item.category)"
+                        class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none"
+                      >
+                        {{ item.category || '教室' }} ({{ item.requiredCount }}人)
+                      </span>
+                      <button
+                        type="button"
+                        @click="clearTaskAssignments(item)"
+                        :disabled="isDrawing || !(item.assignedMembers && item.assignedMembers.length)"
+                        :title="(item.assignedMembers && item.assignedMembers.length) ? '清空此工作的人員對應' : '此工作目前沒有人員'"
+                        :class="(item.assignedMembers && item.assignedMembers.length) ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'"
+                        class="p-1 rounded-lg text-sm leading-none transition"
+                      >
+                        🗑️
+                      </button>
                     </span>
                 </div>
 
@@ -635,6 +647,15 @@
           </div>
           
           <div class="flex flex-wrap gap-2">
+            <button
+              @click="undoLastAction"
+              :disabled="undoStack.length === 0"
+              :title="undoStack.length > 0 ? '復原：' + undoStack[undoStack.length - 1].label : '目前沒有可復原的操作'"
+              :class="undoStack.length > 0 ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'"
+              class="border px-3 py-1.5 rounded-xl text-xs font-semibold transition"
+            >
+              ↩️ 復原<span v-if="undoStack.length > 0"> ({{ undoStack.length }})</span>
+            </button>
             <button @click="clearAllTasks" class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
               🗑️ 清空所有工作
             </button>
@@ -1044,13 +1065,26 @@
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               
-              <label class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer transition">
-                <input type="checkbox" v-model="avoidRepeat" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
-                <div>
-                  <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⚡ 不重複模式</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">優先讓工作不與上次重複。</span>
+              <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" v-model="avoidRepeat" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
+                  <div>
+                    <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⚡ 不重複模式</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">優先讓工作不與所選的那次掃地工作重複。</span>
+                  </div>
+                </label>
+                <div class="space-y-1">
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-300 block">不與哪一次重複</span>
+                  <select
+                    v-model="avoidRepeatLogId"
+                    :disabled="!avoidRepeat"
+                    class="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-50"
+                  >
+                    <option value="latest">最近一次（預設）{{ historyLogs.length > 0 ? '：' + (historyLogs[0].timestamp || '未記錄時間') : '（尚無歷史紀錄）' }}</option>
+                    <option v-for="opt in avoidRepeatLogOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+                  </select>
                 </div>
-              </label>
+              </div>
 
               <label class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer transition">
                 <input type="checkbox" v-model="avoidSadness" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
@@ -1718,6 +1752,50 @@
         ]);
         
         const tasks = ref([]);
+
+        // 復原（掃地工作項目頁）：每次操作前存一份快照（工作、人員指派、抽籤結果），不寫入 localStorage
+        const UNDO_LIMIT = 20;
+        const undoStack = ref([]);
+        const cloneData = (value) => JSON.parse(JSON.stringify(value));
+
+        const pushUndo = (label) => {
+          undoStack.value.push({
+            label,
+            state: {
+              tasks: cloneData(tasks.value),
+              assignments: members.value.filter(m => m.assignedTaskId).map(m => [m.id, m.assignedTaskId]),
+              currentResults: cloneData(currentResults.value),
+              exemptMembers: cloneData(exemptMembers.value),
+              hasDrawRun: hasDrawRun.value,
+              drawTimestamp: drawTimestamp.value
+            }
+          });
+          if (undoStack.value.length > UNDO_LIMIT) undoStack.value.shift();
+        };
+
+        // 抽籤、清除結果、重設、匯入備份後，舊快照已和歷史紀錄對不上，一律作廢
+        const clearUndoStack = () => {
+          undoStack.value = [];
+        };
+
+        const undoLastAction = () => {
+          const entry = undoStack.value.pop();
+          if (!entry) {
+            showToast('目前沒有可復原的操作', 'ℹ️');
+            return;
+          }
+          const s = entry.state;
+          const assignmentMap = new Map(s.assignments);
+          tasks.value = s.tasks;
+          members.value.forEach(m => { m.assignedTaskId = assignmentMap.get(m.id) || null; });
+          currentResults.value = s.currentResults;
+          exemptMembers.value = s.exemptMembers;
+          hasDrawRun.value = s.hasDrawRun;
+          drawTimestamp.value = s.drawTimestamp;
+          ensureSelectedCategory();
+          showToast(`已復原：${entry.label}`, '↩️');
+        };
+
         const newTaskName = ref('');
         const newTaskCategory = ref('教室');
         const newTaskCount = ref(2);
@@ -1727,6 +1805,7 @@
         const selectedCategory = ref('教室');
         const DEFAULT_DRAW_SETTINGS = {
           avoidRepeat: true,
+          avoidRepeatLogId: 'latest',
           avoidSadness: true,
           bigBlowMode: true,
           enableConfetti: true,
@@ -1848,6 +1927,7 @@
               showToast(`此工作已指派 ${assignedCount} 人，需求人數不可低於 ${assignedCount}`, '⚠️');
               return;
             }
+            pushUndo(`編輯工作「${target.name}」`);
             target.name = f.name.trim();
             target.category = f.category;
             target.count = nextCount;
@@ -1946,6 +2026,7 @@
         });
 
         const toggleTaskHeavy = (task) => {
+          pushUndo(`變更「${task.name}」的辛苦標記`);
           task.isHeavy = !task.isHeavy;
           showToast(task.isHeavy ? `已將「${task.name}」標記為辛苦工作 🔨 (看板置頂且最後抽)` : `已取消「${task.name}」辛苦工作標記`, '🔨');
         };
@@ -1961,6 +2042,7 @@
             return;
           }
           const cat = categories.value.includes(newTaskCategory.value) ? newTaskCategory.value : getFallbackCategory();
+          pushUndo(`新增工作「${name}」`);
           tasks.value.push({
             id: 'task-' + Date.now(),
             name: name,
@@ -1986,10 +2068,13 @@
             showToast(`此工作已指派 ${assignedCount} 人，需求人數不可低於 ${assignedCount}`, '⚠️');
             return;
           }
+          pushUndo(`調整「${task.name}」需求人數`);
           task.count = newCount;
         };
 
         const removeTask = (id) => {
+          const target = tasks.value.find(t => t.id === id);
+          pushUndo(`刪除工作「${target ? target.name : ''}」`);
           tasks.value = tasks.value.filter(t => t.id !== id);
           members.value.forEach(m => {
             if (m.assignedTaskId === id) m.assignedTaskId = null;
@@ -1998,6 +2083,7 @@
 
         const clearAllTasks = () => {
           if (confirm('確定要清空所有掃地工作項目嗎？')) {
+            pushUndo('清空所有工作');
             tasks.value = [];
             members.value.forEach(m => m.assignedTaskId = null);
             showToast('已清空所有工作項目', '🗑️');
@@ -2005,6 +2091,7 @@
         };
 
         const loadPresetTasks = (silent = false) => {
+          if (!silent) pushUndo('載入預設工作範本');
           tasks.value = getPresetTasks();
           if (!silent) showToast('已載入預設四大分類掃地工作範本！', '💡');
         };
@@ -2138,6 +2225,7 @@
               });
 
               if (imported.length > 0) {
+                pushUndo('匯入 Excel 工作');
                 tasks.value = imported;
                 sanitizeMemberAssignments();
                 showToast(`成功從 Excel (.xlsx) 匯入 ${imported.length} 項工作！`, '🎉');
@@ -2208,6 +2296,7 @@
         const toggleMemberTaskAssignment = (member, taskId) => {
           if (!member || !taskId) return;
           if (member.assignedTaskId === taskId) {
+            pushUndo(`取消「${member.name}」的工作指派`);
             member.assignedTaskId = null;
             syncManualAssignmentsToResults();
             showToast(`已取消「${member.name}」的工作指派`, '🔄');
@@ -2217,6 +2306,7 @@
           if (isTaskFull(taskId)) return;
           if (!confirmTaskReassignment(member, taskId)) return;
           const task = tasks.value.find(item => item.id === taskId);
+          pushUndo(`指派「${member.name}」`);
           member.assignedTaskId = taskId;
           syncManualAssignmentsToResults();
           showToast(`已將「${member.name}」指定至【${task?.name || '掃地工作'}】`, '🧹');
@@ -2287,6 +2377,7 @@
         const isDrawing = ref(false);
         const activeDrawingTaskId = ref(null);
         const avoidRepeat = ref(true);
+        const avoidRepeatLogId = ref('latest'); // 'latest' = 永遠跟最近一次；否則是某筆歷史紀錄的 id
         const avoidSadness = ref(true);
         const bigBlowMode = ref(true);
         const enableConfetti = ref(true);
@@ -2297,6 +2388,16 @@
         const drawTimestamp = ref('');
         const hasDrawRun = ref(false);
         const historyLogs = ref([]);
+        const avoidRepeatLogOptions = computed(() => historyLogs.value.map((log, idx) => ({
+          id: log.id,
+          label: `${log.timestamp || '未記錄時間'}｜${(log.results || []).length} 項工作${idx === 0 ? '（目前最近一次）' : ''}`
+        })));
+        // 所選的那筆歷史被刪掉（或備份換了歷史）時退回「最近一次」
+        watch(() => historyLogs.value.map(log => log.id).join(','), () => {
+          if (avoidRepeatLogId.value !== 'latest' && !historyLogs.value.some(log => log.id === avoidRepeatLogId.value)) {
+            avoidRepeatLogId.value = 'latest';
+          }
+        });
         const historySortMode = ref('SEQUENCE');
         const expandedHistoryIds = ref([]);
         const exportSortMode = ref('SEQUENCE');
@@ -2449,36 +2550,55 @@
           return arr;
         };
 
-        // 上一次抽籤結果對照表（給不重複／不悲情／大風吹用）
-        const getLastDrawMaps = () => {
-          const lastLog = historyLogs.value[0];
-          const maps = { lastLog, lastHeavyMembersMap: {}, lastTaskMap: {}, lastCategoryMap: {} };
-          if (lastLog && lastLog.results) {
-            lastLog.results.forEach(res => {
+        // 歷史紀錄 → 成員對照表
+        const buildLogMaps = (log) => {
+          const maps = { taskMap: {}, categoryMap: {}, heavyMap: {} };
+          if (log && log.results) {
+            log.results.forEach(res => {
               (res.assignedMembers || []).forEach(m => {
-                maps.lastTaskMap[m.id] = res.taskId;
-                maps.lastCategoryMap[m.id] = res.category;
-                if (res.isHeavy) maps.lastHeavyMembersMap[m.id] = true;
+                maps.taskMap[m.id] = res.taskId;
+                maps.categoryMap[m.id] = res.category;
+                if (res.isHeavy) maps.heavyMap[m.id] = true;
               });
             });
           }
           return maps;
         };
 
-        // 依偏好從已洗牌的候選池挑一位，回傳索引；找不到符合條件者就取第 0 位
+        // 上一次抽籤結果對照表（給不悲情／大風吹用）＋ 不重複模式所選那次的對照表
+        const getLastDrawMaps = () => {
+          const lastLog = historyLogs.value[0];
+          const last = buildLogMaps(lastLog);
+          const repeatLog = avoidRepeatLogId.value === 'latest'
+            ? lastLog
+            : (historyLogs.value.find(log => log.id === avoidRepeatLogId.value) || lastLog);
+          return {
+            lastLog,
+            lastHeavyMembersMap: last.heavyMap,
+            lastCategoryMap: last.categoryMap,
+            repeatLog,
+            repeatTaskMap: buildLogMaps(repeatLog).taskMap
+          };
+        };
+
+        // 依偏好從已洗牌的候選池挑一位，回傳索引；規則由嚴到寬逐層放寬，全部找不到才取第 0 位
         // task 可以是工作（id/category）或結果卡（taskId/category）
         const pickCandidateIndex = (pool, task, maps) => {
-          const { lastLog, lastHeavyMembersMap, lastTaskMap, lastCategoryMap } = maps;
+          const { lastLog, lastHeavyMembersMap, lastCategoryMap, repeatLog, repeatTaskMap } = maps;
           const taskId = task.taskId || task.id;
           const category = task.category || '教室';
+          const rules = [];
           if (avoidSadness.value && task.isHeavy) {
-            const idx = pool.findIndex(m => !lastHeavyMembersMap[m.id]);
-            if (idx !== -1) return idx;
+            rules.push(m => !lastHeavyMembersMap[m.id]);
           } else if (bigBlowMode.value && lastLog) {
-            const idx = pool.findIndex(m => lastCategoryMap[m.id] !== category);
-            if (idx !== -1) return idx;
-          } else if (avoidRepeat.value && lastLog) {
-            const idx = pool.findIndex(m => lastTaskMap[m.id] !== taskId);
+            rules.push(m => lastCategoryMap[m.id] !== category);
+          }
+          if (avoidRepeat.value && repeatLog) {
+            rules.push(m => repeatTaskMap[m.id] !== taskId);
+          }
+          for (let n = rules.length; n > 0; n--) {
+            const active = rules.slice(0, n);
+            const idx = pool.findIndex(m => active.every(rule => rule(m)));
             if (idx !== -1) return idx;
           }
           return 0;
@@ -2520,6 +2640,7 @@
           });
 
           const availablePool = presentMembers.value.filter(m => !alreadyAssignedIds.has(m.id));
+          clearUndoStack();
           if (availablePool.length === 0) {
             showToast('全體應抽籤成員皆已抽籤完畢！', 'ℹ️');
             return;
@@ -2581,6 +2702,7 @@
             return;
           }
 
+          clearUndoStack();
           isDrawing.value = true;
           hasDrawRun.value = true;
           exemptMembers.value = [];
@@ -2641,8 +2763,27 @@
           }
         };
 
+        // 分配對照表上的小垃圾桶：清空單一工作與人員的對應（手動指定與抽中的都清掉，人員回到未分配）
+        const clearTaskAssignments = (item) => {
+          if (isDrawing.value) return;
+          const assignedCount = (item.assignedMembers || []).length;
+          if (assignedCount === 0) {
+            showToast(`「${item.taskName}」目前沒有指派人員`, 'ℹ️');
+            return;
+          }
+          if (!confirm(`確定要清空【${item.taskIcon || ''}${item.taskName}】已對應的 ${assignedCount} 位人員嗎？\n\n清空後這些人員會回到未分配，可到「掃地工作項目」頁按「復原」還原。`)) return;
+          pushUndo(`清空「${item.taskName}」的人員對應`);
+          members.value.forEach(m => {
+            if (m.assignedTaskId === item.taskId) m.assignedTaskId = null;
+          });
+          const result = currentResults.value.find(r => r.taskId === item.taskId);
+          if (result) result.assignedMembers = [];
+          showToast(`已清空【${item.taskName}】的人員對應`, '🗑️');
+        };
+
         const confirmClearDrawResults = () => {
           if (confirm('確定要清除當前抽籤結果嗎？')) {
+            clearUndoStack();
             currentResults.value = [];
             exemptMembers.value = [];
             hasDrawRun.value = false;
@@ -2977,6 +3118,7 @@
             drawTimestamp: drawTimestamp.value,
             hasDrawRun: hasDrawRun.value,
             avoidRepeat: avoidRepeat.value,
+            avoidRepeatLogId: avoidRepeatLogId.value,
             avoidSadness: avoidSadness.value,
             bigBlowMode: bigBlowMode.value,
             enableConfetti: enableConfetti.value,
@@ -3012,6 +3154,7 @@
               if (data.drawTimestamp) drawTimestamp.value = data.drawTimestamp;
               if (data.hasDrawRun !== undefined) hasDrawRun.value = data.hasDrawRun;
               if (data.avoidRepeat !== undefined) avoidRepeat.value = data.avoidRepeat;
+              if (typeof data.avoidRepeatLogId === 'string') avoidRepeatLogId.value = data.avoidRepeatLogId;
               if (data.avoidSadness !== undefined) avoidSadness.value = data.avoidSadness;
               if (data.bigBlowMode !== undefined) bigBlowMode.value = data.bigBlowMode;
               if (data.enableConfetti !== undefined) enableConfetti.value = data.enableConfetti;
@@ -3037,13 +3180,14 @@
           }
         };
 
-        watch([members, tasks, historyLogs, currentResults, exemptMembers, drawTimestamp, hasDrawRun, avoidRepeat, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode, categorySettings, exportSortMode], () => {
+        watch([members, tasks, historyLogs, currentResults, exemptMembers, drawTimestamp, hasDrawRun, avoidRepeat, avoidRepeatLogId, avoidSadness, bigBlowMode, enableConfetti, drawDuration, drawAnimationType, isDarkMode, categorySettings, exportSortMode], () => {
           saveData();
         }, { deep: true });
 
         const resetAllData = () => {
           if (confirm('警告：確定要全部重設嗎？\n\n這會清空所有成員、掃地工作、抽籤結果、免掃地名單與歷史紀錄。此操作無法復原。')) {
             localStorage.removeItem(STORAGE_KEY);
+            clearUndoStack();
             members.value = [];
             tasks.value = [];
             currentResults.value = [];
@@ -3060,6 +3204,7 @@
 
         const restoreDefaultData = () => {
           if (confirm('確定要恢復程式預設值嗎？\n\n這會載入預設成員、預設掃地工作與預設抽籤偏好，並清除目前抽籤結果與歷史紀錄。')) {
+            clearUndoStack();
             loadPresetTasks(true);
             members.value = DEFAULT_MEMBER_NAMES.map((str, idx) => ({
               id: 'sample-' + (idx + 1),
@@ -3074,6 +3219,7 @@
             hasDrawRun.value = false;
             drawTimestamp.value = '';
             avoidRepeat.value = DEFAULT_DRAW_SETTINGS.avoidRepeat;
+            avoidRepeatLogId.value = DEFAULT_DRAW_SETTINGS.avoidRepeatLogId;
             avoidSadness.value = DEFAULT_DRAW_SETTINGS.avoidSadness;
             bigBlowMode.value = DEFAULT_DRAW_SETTINGS.bigBlowMode;
             enableConfetti.value = DEFAULT_DRAW_SETTINGS.enableConfetti;
@@ -3088,6 +3234,7 @@
 
         const getDrawSettings = () => ({
           avoidRepeat: avoidRepeat.value,
+          avoidRepeatLogId: avoidRepeatLogId.value,
           avoidSadness: avoidSadness.value,
           bigBlowMode: bigBlowMode.value,
           enableConfetti: enableConfetti.value,
@@ -3097,6 +3244,7 @@
         const applyDrawSettings = (settings) => {
           if (!settings || typeof settings !== 'object') return;
           if (typeof settings.avoidRepeat === 'boolean') avoidRepeat.value = settings.avoidRepeat;
+          if (typeof settings.avoidRepeatLogId === 'string') avoidRepeatLogId.value = settings.avoidRepeatLogId;
           if (typeof settings.avoidSadness === 'boolean') avoidSadness.value = settings.avoidSadness;
           if (typeof settings.bigBlowMode === 'boolean') bigBlowMode.value = settings.bigBlowMode;
           if (typeof settings.enableConfetti === 'boolean') enableConfetti.value = settings.enableConfetti;
@@ -3135,6 +3283,7 @@
               if (!data || typeof data !== 'object' || (!Array.isArray(data.members) && !Array.isArray(data.tasks))) {
                 throw new Error('備份檔缺少 members / tasks');
               }
+              clearUndoStack();
               if (Array.isArray(data.members)) members.value = data.members;
               if (Array.isArray(data.tasks)) tasks.value = data.tasks;
               if (Array.isArray(data.historyLogs)) historyLogs.value = data.historyLogs;
@@ -3222,6 +3371,9 @@
           onSelectFormCategory,
           addNewTask,
           updateTaskCount,
+          undoStack,
+          undoLastAction,
+          clearTaskAssignments,
           removeTask,
           clearAllTasks,
           loadPresetTasks,
@@ -3251,6 +3403,8 @@
           isDrawing,
           activeDrawingTaskId,
           avoidRepeat,
+          avoidRepeatLogId,
+          avoidRepeatLogOptions,
           avoidSadness,
           bigBlowMode,
           enableConfetti,
