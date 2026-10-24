@@ -2,9 +2,9 @@
 
 ## 版權維護規範（2026-10-24 版權任務導入）
 
-- **現況**：根目錄 `LICENSE.md`（限制性授權；v2.11 以前舊版本的 MIT 效力保留）、既有 `LICENSE`（MIT 原檔，僅適用舊版本，**不得刪改**）、README「授權條款」、既有頁尾內單一版權句、`index.html` 檔頭版權註解。授權政策：聖功女中師生免費、**所有使用者限非營利**、其他學校須寄信 derliang@gmail.com 並取得作者 Email 明確同意。
+- **現況**：根目錄 `LICENSE.md`（限制性授權；v2.11 以前舊版本的 MIT 效力保留）、`LICENSE-MIT-legacy`（原 `LICENSE`，MIT 原檔，僅適用舊版本，**不得刪改、不得改回 `LICENSE`**）、README「授權條款」、既有頁尾內單一版權句、`index.html` 檔頭版權註解。授權政策：聖功女中師生免費、**所有使用者限非營利**、其他學校須寄信 derliang@gmail.com 並取得作者 Email 明確同意。
 - **後續開發守則**：不得移除或改寫版權標示；版權句維持整合在既有 `<footer>`，不另加第二個頁尾；不得把授權改回 MIT；匯出的圖片／PDF／Excel／Word 不加入版權句（避免改動使用者匯出內容）。
-- **待作者確認**：(1) `LICENSE.md` 著作權人姓名標示「待確認」；(2) 舊 MIT 版本以 commit `81a5865` 為界，是否需另外標記 git tag 由作者決定；(3) GitHub 側欄仍會因 `LICENSE` 顯示 MIT，是否改名（例如 `LICENSE-MIT-legacy`）由作者決定，本次未動。
+- **已確認事項（2026-10-24）**：著作權人為「黃德亮」（公開識別 derliang）；舊 MIT 版本以 commit `81a5865` 為界，已標 git tag `v2.11-mit`；MIT 原檔 `LICENSE` 已改名為 `LICENSE-MIT-legacy`。
 
 ## 2026-10-24 版權任務（已完成，不改功能、不改版號）
 

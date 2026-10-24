@@ -1,6 +1,6 @@
 # 使用授權與著作權聲明
 
-Copyright © 2026 【著作權人姓名待確認】（公開作者識別：derliang）
+Copyright © 2026 黃德亮（公開作者識別：derliang）
 保留所有權利（All Rights Reserved）。
 聯絡信箱：derliang@gmail.com
 
@@ -32,9 +32,9 @@ Copyright © 2026 【著作權人姓名待確認】（公開作者識別：derli
 本版聲明日期：2026-10-24。此日期為聲明版本日期，不應被表述為作品的首次創作日期。
 
 ## 十、與既有 MIT 授權的版本分界
-本專案先前發布的版本曾以 MIT License 公開（根目錄 `LICENSE` 檔，Copyright (c) 2026 derliang；README 曾載明採 MIT License 開源授權）。為尊重已依該授權取得之權利，作如下區分：
+本專案先前發布的版本曾以 MIT License 公開（根目錄 MIT 原檔，現名 `LICENSE-MIT-legacy`，原名 `LICENSE`，Copyright (c) 2026 derliang；README 曾載明採 MIT License 開源授權）。為尊重已依該授權取得之權利，作如下區分：
 
-- **v2.11（commit `81a5865`）及之前所有已發布版本**：依其當時公開之 MIT License 條款繼續有效，本文件不溯及撤銷。根目錄 `LICENSE` 檔原樣保留，**僅對上述舊版本適用**。
+- **v2.11（commit `81a5865`）及之前所有已發布版本**：依其當時公開之 MIT License 條款繼續有效，本文件不溯及撤銷。MIT 原檔已改名為 `LICENSE-MIT-legacy`（內容與歷史紀錄不變），**僅對上述舊版本適用**。
 - **自 2026-10-24 本次版權更新起新增或修改之版本與內容**（`81a5865` 之後的 commit）：適用本文件之限制性授權，不再以 MIT License 授權。
 - 他人依 MIT License 合法取得之舊版本副本仍得依 MIT 條款使用，但不因此取得後續新版本之 MIT 授權。
-- 注意：GitHub 儲存庫頁面可能因 `LICENSE` 檔而顯示 MIT；該顯示僅反映舊版本，現行版本以本文件為準。
+- 舊版本分界已標 git tag `v2.11-mit`（指向 `81a5865`）。MIT 原檔改名是為避免 GitHub 將現行版本誤判為 MIT。

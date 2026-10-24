@@ -65,4 +65,4 @@
 
 本程式免費提供聖功女中師生於非營利教育用途使用；**所有使用者均限非營利使用**。其他學校或機構請先寄信至 [derliang@gmail.com](mailto:derliang@gmail.com) 申請，並取得作者 Email 回覆同意。程式碼重製、修改、散布、再發布及商業使用均須另行授權。
 
-**版本說明**：v2.11（含）以前已發布的版本曾以 [MIT License](LICENSE) 公開，其 MIT 授權對該些版本維持有效、不溯及撤銷；之後的新版本改適用上述限制性授權。完整條款請參閱 [LICENSE.md](./LICENSE.md)。
+**版本說明**：v2.11（含）以前已發布的版本曾以 [MIT License](LICENSE-MIT-legacy) 公開，其 MIT 授權對該些版本維持有效、不溯及撤銷；之後的新版本改適用上述限制性授權。完整條款請參閱 [LICENSE.md](./LICENSE.md)。
