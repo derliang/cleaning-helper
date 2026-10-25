@@ -7,24 +7,23 @@ Authorization inquiries: derliang@gmail.com
 -->
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掃地工作小幫手 v2.11</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>掃地工作小幫手 v2.12</title>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            classroom: { DEFAULT: '#10b981', light: '#ecfdf5', border: '#a7f3d0', dark: '#047857' },
-            duty: { DEFAULT: '#f59e0b', light: '#fffbeb', border: '#fde68a', dark: '#b45309' },
-            public: { DEFAULT: '#6366f1', light: '#eef2ff', border: '#c7d2fe', dark: '#4338ca' },
-            toilet: { DEFAULT: '#0284c7', light: '#f0f9ff', border: '#bae6fd', dark: '#0369a1' }
-          }
+    /* 在畫面繪製前套用配色，避免深色使用者先閃一下亮色。規範見 docs/design/DESIGN.md */
+    (function () {
+      try {
+        var t = localStorage.getItem('cleaning_helper_theme');
+        if (t !== 'light' && t !== 'dark' && t !== 'system') {
+          /* 第一次使用新版：舊版存過深色的人維持深色，其餘跟隨系統 */
+          var d = JSON.parse(localStorage.getItem('cleaning_task_helper_data_v8') || 'null');
+          t = d && d.isDarkMode === true ? 'dark' : 'system';
+          localStorage.setItem('cleaning_helper_theme', t);
         }
-      }
-    }
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
   </script>
   <!-- Vue 3 -->
   <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
@@ -39,1431 +38,1273 @@ Authorization inquiries: derliang@gmail.com
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-    }
-    [v-cloak] {
-      display: none !important;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 4px;
-    }
-    .dark .custom-scrollbar::-webkit-scrollbar-track {
-      background: #1e293b;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #475569;
-    }
-    @keyframes slotShuffle {
-      0% { transform: translateY(-3px); opacity: 0.8; }
-      50% { transform: translateY(3px); opacity: 1; }
-      100% { transform: translateY(0); opacity: 0.8; }
-    }
-    .animate-shuffle {
-      animation: slotShuffle 0.12s infinite ease-in-out;
-    }
-    @keyframes cardFlipAnim {
-      0% { transform: rotateY(0deg); }
-      50% { transform: rotateY(90deg); }
-      100% { transform: rotateY(0deg); }
-    }
-    .animate-card-flip {
-      animation: cardFlipAnim 0.3s ease-in-out;
-    }
-    @keyframes glowPulse {
-      0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)); }
-      50% { opacity: 0.7; filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.3)); }
-    }
-    .animate-glow {
-      animation: glowPulse 0.4s infinite ease-in-out;
-    }
-    @keyframes popBounce {
-      0% { transform: scale(0.8); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
-    }
-    .animate-bounce-in {
-      animation: popBounce 0.3s ease-out;
-    }
-    @keyframes diceSpin {
-      0% { transform: rotate(0deg) scale(0.9); }
-      50% { transform: rotate(180deg) scale(1.1); }
-      100% { transform: rotate(360deg) scale(1); }
-    }
-    .animate-dice-spin {
-      animation: diceSpin 0.35s infinite linear;
-    }
-    @page {
-      size: A4 landscape;
-      margin: 8mm;
-    }
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #print-pdf-template, #print-pdf-template * {
-        visibility: visible;
-      }
-      #print-pdf-template {
-        position: absolute;
-        left: 0;
-        top: 0;
-        display: block !important;
-        width: 100%;
-      }
-    }
+/* ============================================================
+   掃地工作小幫手 · Design Tokens
+   概念：紙本點名簿（淺色）與教室黑板（深色）。
+   暖調紙色底、墨綠主色、琥珀只用在「辛苦／進行中」。
+   全部用 hex：html2canvas 無法解析 oklch，匯出圖片會壞。
+   ============================================================ */
+:root {
+  --font: 'Noto Sans TC', system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+
+  /* 表面與線條 */
+  --bg: #F5F4EF;
+  --surface: #FDFCF9;
+  --surface-2: #EEEDE6;
+  --surface-3: #E3E2D8;
+  --line: #E2E0D5;
+  --line-strong: #CBC8BA;
+
+  /* 文字（text-3 只用在 bg / surface / surface-2 上，對比 ≥ 4.9） */
+  --text: #1B2623;
+  --text-2: #43504B;
+  --text-3: #5C6863;
+
+  /* 主色：墨綠 */
+  --primary: #0F766E;
+  --primary-hover: #0B5F59;
+  --primary-ink: #0A4F4A;
+  --primary-soft: #DDF0EC;
+  --primary-line: #A9D6CE;
+  --on-primary: #FFFFFF;
+
+  /* 強調：琥珀（辛苦的工作、抽籤進行中） */
+  --accent: #B45309;
+  --accent-ink: #7A3B06;
+  --accent-soft: #FBEBCB;
+  --accent-line: #E8C887;
+  --ring: #E09A2E;
+  --heavy-bg: #FFF6E2;
+  --on-solid: #FFFFFF;
+
+  /* 危險 */
+  --danger: #BE123C;
+  --danger-ink: #9F1239;
+  --danger-soft: #FDE6EA;
+  --danger-line: #F2B6C2;
+
+  /* 工作類別 */
+  --cat-classroom-bg: #E2F3E7; --cat-classroom-fg: #14612F; --cat-classroom-line: #B3DABE; --cat-classroom-solid: #1E7B43;
+  --cat-duty-bg: #FAEDCB;      --cat-duty-fg: #7F4308;      --cat-duty-line: #E8CA87;      --cat-duty-solid: #A45C08;
+  --cat-public-bg: #E7E8FA;    --cat-public-fg: #3C3CA0;    --cat-public-line: #C2C6EE;    --cat-public-solid: #4B4BC0;
+  --cat-restroom-bg: #DCEEF9;  --cat-restroom-fg: #0A5782;  --cat-restroom-line: #B0D5EC;  --cat-restroom-solid: #1B76AB;
+  --cat-other-bg: #EEEDE6;     --cat-other-fg: #43504B;     --cat-other-line: #CBC8BA;     --cat-other-solid: #5C6863;
+
+  /* 形狀與陰影 */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 22px;
+  --shadow-1: 0 1px 2px rgba(40, 36, 20, .07), 0 1px 1px rgba(40, 36, 20, .04);
+  --shadow-2: 0 10px 28px -10px rgba(40, 36, 20, .28), 0 2px 6px rgba(40, 36, 20, .08);
+  --scrim: rgba(27, 38, 35, .46);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1219; --surface: #141B25; --surface-2: #1B2431; --surface-3: #263244;
+    --line: #222D3B; --line-strong: #34445A;
+    --text: #E9EEF5; --text-2: #B7C2D1; --text-3: #8D9BB0;
+    --primary: #38BBAA; --primary-hover: #55CDBE; --primary-ink: #8FE0D4; --primary-soft: #11282B; --primary-line: #1F5254; --on-primary: #03201C;
+    --accent: #F2B84B; --accent-ink: #F6D08A; --accent-soft: #2B2415; --accent-line: #5C4720; --ring: #F2B84B; --heavy-bg: #1D1E1F; --on-solid: #0A1017;
+    --danger: #FF8CA0; --danger-ink: #FFB3C0; --danger-soft: #2D1A22; --danger-line: #66303E;
+    --cat-classroom-bg: #14291F; --cat-classroom-fg: #86D9A6; --cat-classroom-line: #24503A; --cat-classroom-solid: #38A868;
+    --cat-duty-bg: #2A2415;      --cat-duty-fg: #F0C46E;      --cat-duty-line: #5C4720;      --cat-duty-solid: #D69324;
+    --cat-public-bg: #1D2245;    --cat-public-fg: #AEB6FF;    --cat-public-line: #353C82;    --cat-public-solid: #6F78E6;
+    --cat-restroom-bg: #12283E;  --cat-restroom-fg: #8FCBF5;  --cat-restroom-line: #20527C;  --cat-restroom-solid: #3B9AE0;
+    --cat-other-bg: #1B2431;     --cat-other-fg: #B7C2D1;     --cat-other-line: #34445A;     --cat-other-solid: #8D9BB0;
+    --shadow-1: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-2: 0 14px 32px -10px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .4);
+    --scrim: rgba(3, 6, 10, .68);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1219; --surface: #141B25; --surface-2: #1B2431; --surface-3: #263244;
+  --line: #222D3B; --line-strong: #34445A;
+  --text: #E9EEF5; --text-2: #B7C2D1; --text-3: #8D9BB0;
+  --primary: #38BBAA; --primary-hover: #55CDBE; --primary-ink: #8FE0D4; --primary-soft: #11282B; --primary-line: #1F5254; --on-primary: #03201C;
+  --accent: #F2B84B; --accent-ink: #F6D08A; --accent-soft: #2B2415; --accent-line: #5C4720; --ring: #F2B84B; --heavy-bg: #1D1E1F; --on-solid: #0A1017;
+  --danger: #FF8CA0; --danger-ink: #FFB3C0; --danger-soft: #2D1A22; --danger-line: #66303E;
+  --cat-classroom-bg: #14291F; --cat-classroom-fg: #86D9A6; --cat-classroom-line: #24503A; --cat-classroom-solid: #38A868;
+  --cat-duty-bg: #2A2415;      --cat-duty-fg: #F0C46E;      --cat-duty-line: #5C4720;      --cat-duty-solid: #D69324;
+  --cat-public-bg: #1D2245;    --cat-public-fg: #AEB6FF;    --cat-public-line: #353C82;    --cat-public-solid: #6F78E6;
+  --cat-restroom-bg: #12283E;  --cat-restroom-fg: #8FCBF5;  --cat-restroom-line: #20527C;  --cat-restroom-solid: #3B9AE0;
+  --cat-other-bg: #1B2431;     --cat-other-fg: #B7C2D1;     --cat-other-line: #34445A;     --cat-other-solid: #8D9BB0;
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 14px 32px -10px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .4);
+  --scrim: rgba(3, 6, 10, .68);
+  color-scheme: dark;
+}
+
+/* ============================================================
+   掃地工作小幫手 · Components
+   行動優先：基準是手機（390），@media (min-width) 往上加。
+   觸控：手機與 iPad 的點擊區 ≥ 44px，桌機（≥1024）縮到 40 / 34。
+   ============================================================ */
+.app {
+  --tap: 44px;
+  --tap-sm: 44px;
+  --pad: 16px;
+  --tabbar-h: 64px;
+  --dock-offset: 0px;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  min-height: var(--viewport-h, 100dvh);
+  display: flex;
+  flex-direction: column;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.app *, .app *::before, .app *::after { box-sizing: border-box; }
+.app button, .app input, .app select, .app textarea { font: inherit; color: inherit; }
+.app button { cursor: pointer; }
+.app :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.app h1, .app h2, .app h3, .app p { margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- 類別色 ---------- */
+[data-cat] { --cat-bg: var(--cat-other-bg); --cat-fg: var(--cat-other-fg); --cat-line: var(--cat-other-line); --cat-solid: var(--cat-other-solid); }
+[data-cat="classroom"] { --cat-bg: var(--cat-classroom-bg); --cat-fg: var(--cat-classroom-fg); --cat-line: var(--cat-classroom-line); --cat-solid: var(--cat-classroom-solid); }
+[data-cat="duty"]      { --cat-bg: var(--cat-duty-bg);      --cat-fg: var(--cat-duty-fg);      --cat-line: var(--cat-duty-line);      --cat-solid: var(--cat-duty-solid); }
+[data-cat="public"]    { --cat-bg: var(--cat-public-bg);    --cat-fg: var(--cat-public-fg);    --cat-line: var(--cat-public-line);    --cat-solid: var(--cat-public-solid); }
+[data-cat="restroom"]  { --cat-bg: var(--cat-restroom-bg);  --cat-fg: var(--cat-restroom-fg);  --cat-line: var(--cat-restroom-line);  --cat-solid: var(--cat-restroom-solid); }
+
+/* ---------- 按鈕 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--tap); padding: 0 16px;
+  border-radius: var(--r-md); border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--text);
+  font-weight: 700; font-size: 14px; line-height: 1; white-space: nowrap;
+  transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: translateY(1px); }
+.btn[disabled], .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-accent { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.btn-accent:hover { background: var(--accent-soft); border-color: var(--accent); }
+.btn-soft { background: var(--primary-soft); border-color: var(--primary-line); color: var(--primary-ink); }
+.btn-soft:hover { background: var(--primary-soft); border-color: var(--primary); }
+.btn-danger { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+.btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-ghost.btn-danger { color: var(--danger-ink); }
+.btn-ghost.btn-danger:hover { background: var(--danger-soft); }
+.btn-lg { min-height: 56px; padding: 0 28px; font-size: 17px; border-radius: var(--r-lg); }
+.btn-sm { min-height: var(--tap-sm); padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
+.btn-icon { width: var(--tap); padding: 0; font-size: 18px; flex: none; }
+.btn-icon.btn-sm { width: var(--tap-sm); }
+.btn-block { width: 100%; }
+
+/* ---------- 表單 ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.label { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.hint { font-size: 12.5px; color: var(--text-3); }
+.input, .select, .textarea {
+  width: 100%; min-height: var(--tap); padding: 0 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md);
+  background: var(--surface); font-size: 16px; line-height: 1.4;
+  transition: border-color .15s, box-shadow .15s;
+}
+.textarea { padding: 12px 14px; resize: vertical; min-height: 112px; }
+.input::placeholder, .textarea::placeholder { color: var(--text-3); }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.select { appearance: none; padding-right: 38px; font-weight: 500;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-2) 50%), linear-gradient(135deg, var(--text-2) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+
+.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 48px; height: 28px; margin: 0;
+  border-radius: 99px; background: var(--surface-3); border: 1px solid var(--line-strong); cursor: pointer; transition: background .2s, border-color .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform .2s; }
+.switch:checked { background: var(--primary); border-color: var(--primary); }
+.switch:checked::after { transform: translateX(20px); background: var(--on-primary); }
+.switch:disabled { opacity: .45; }
+
+.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+.seg button, .seg label { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.seg [aria-pressed="true"], .seg [aria-current="true"] { background: var(--surface); color: var(--primary-ink); font-weight: 700; box-shadow: var(--shadow-1); }
+.seg-full { display: flex; width: 100%; }
+.seg-full > * { flex: 1; }
+
+/* ---------- 標籤 ---------- */
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.chip-ok { background: var(--primary-soft); border-color: var(--primary-line); color: var(--primary-ink); }
+.chip-warn { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.chip-info { background: var(--cat-restroom-bg); border-color: var(--cat-restroom-line); color: var(--cat-restroom-fg); }
+.chip-danger { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+.dotmark { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.badge { display: inline-flex; align-items: center; min-height: 24px; padding: 1px 9px; border-radius: 8px; border: 1px solid var(--cat-line); background: var(--cat-bg); color: var(--cat-fg); font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+/* 座號名牌：左側座號、右側姓名 */
+.tag { display: inline-flex; align-items: stretch; min-height: 34px; border-radius: 10px; overflow: hidden; border: 1px solid var(--primary-line); background: var(--primary-soft); color: var(--primary-ink); font-size: 14px; font-weight: 700; line-height: 1.2; }
+.tag b { display: grid; place-items: center; min-width: 30px; padding: 0 7px; background: var(--primary); color: var(--on-primary); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tag > span { display: flex; align-items: center; gap: 6px; padding: 0 11px; }
+.tag i { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--cat-public-solid); color: var(--on-solid); }
+.tag-manual { background: var(--cat-public-bg); border-color: var(--cat-public-line); color: var(--cat-public-fg); }
+.tag-manual b { background: var(--cat-public-solid); color: var(--on-solid); }
+.tag-empty { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--text-3); font-weight: 500; }
+.tag-empty > span { padding: 0 12px; }
+.tag-plain { background: var(--surface); border-color: var(--line-strong); color: var(--text); }
+.tag-plain b { background: var(--surface-3); color: var(--text-2); }
+
+/* ---------- 卡片 ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.card-pad { padding: 16px; }
+.card-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+/* ---------- 外框：頂部（方案 1a） ---------- */
+.topnav { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topnav-inner { max-width: 1160px; margin-inline: auto; padding: 0 var(--pad); display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand acts" "tabs tabs"; align-items: center; column-gap: 12px; }
+.topnav .brand { grid-area: brand; min-height: 60px; }
+.topnav .topbar-actions { grid-area: acts; }
+.topnav-tabs { grid-area: tabs; display: grid; grid-template-columns: repeat(5, 1fr); margin-inline: calc(var(--pad) * -1); border-top: 1px solid var(--line); }
+.ttab { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); padding: 0 4px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--text-2); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.ttab:hover { color: var(--text); background: var(--surface-2); }
+.ttab[aria-current="page"] { color: var(--primary-ink); font-weight: 700; border-bottom-color: var(--primary); }
+
+/* ---------- 外框：側欄／底欄（方案 1b） ---------- */
+.shell-side .content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: var(--viewport-h, 100dvh); }
+.shell-side { --dock-offset: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+.sidebar, .rail { display: none; }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px var(--pad); background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--primary-soft); border: 1px solid var(--primary-line); display: grid; place-items: center; font-size: 21px; }
+.brand-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.brand-name { font-size: 16px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.brand-sub { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.tabbar { position: sticky; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; min-height: var(--tabbar-h); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; border: 0; background: none; border-radius: var(--r-md); color: var(--text-3); font-size: 12px; font-weight: 500; }
+.tab-ico { display: grid; place-items: center; width: 52px; height: 30px; border-radius: 99px; font-size: 20px; line-height: 1; transition: background .15s; }
+.tab[aria-current="page"] { color: var(--primary-ink); font-weight: 700; }
+.tab[aria-current="page"] .tab-ico { background: var(--primary-soft); }
+
+.nav-item { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border: 0; border-radius: var(--r-md); background: none; color: var(--text-2); font-size: 15px; font-weight: 500; text-align: left; width: 100%; }
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item[aria-current="page"] { background: var(--primary-soft); color: var(--primary-ink); font-weight: 700; }
+.nav-ico { font-size: 19px; line-height: 1; width: 24px; text-align: center; }
+
+/* ---------- 主內容 ---------- */
+.main { flex: 1; width: 100%; max-width: 1160px; margin-inline: auto; padding: 16px var(--pad) 24px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.page-title { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: .01em; text-wrap: balance; }
+.page-sub { margin-top: 2px; font-size: 13px; color: var(--text-3); }
+.head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 概況 */
+.overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-1); }
+.ov-cell { background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ov-label { font-size: 12px; font-weight: 700; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.ov-value { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ov-unit { font-size: 13px; font-weight: 500; color: var(--text-2); }
+.overview-cards { background: none; border: 0; box-shadow: none; gap: 12px; overflow: visible; }
+.overview-cards .ov-cell { border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+
+/* 抽籤動作 */
+.action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: var(--primary-soft); border: 1px solid var(--primary-line); border-radius: var(--r-xl); }
+.action-title { font-size: 20px; font-weight: 700; color: var(--primary-ink); line-height: 1.3; }
+.action-note { margin-top: 4px; font-size: 13px; font-weight: 500; color: var(--accent-ink); }
+.action-btns { display: flex; align-items: center; gap: 10px; }
+.action-btns .btn-primary { min-width: 168px; }
+
+/* 結果區 */
+.results { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.results-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 18px; font-weight: 700; }
+.export { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; }
+.xbtn { position: relative; flex-direction: column; gap: 4px; min-height: 58px; padding: 0 4px; font-size: 12px; font-weight: 700; }
+.xbtn .xico { font-size: 18px; line-height: 1; }
+.xbtn .brand-dot { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+.sheet { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.sheet-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 292px), 1fr)); gap: 12px; }
+.tcard { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); min-width: 0; transition: box-shadow .2s, transform .2s, border-color .2s; }
+.tcard[data-heavy="true"] { background: var(--heavy-bg); border-color: var(--accent-line); }
+.tcard[data-active="true"] { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring), var(--shadow-2); transform: translateY(-2px); }
+.tcard-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.tcard-icon { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; font-size: 23px; background: var(--cat-bg); border: 1px solid var(--cat-line); }
+.tcard-name { font-size: 16px; font-weight: 700; line-height: 1.3; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tcard-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tcard-desc { font-size: 12.5px; color: var(--text-3); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.tcard[data-heavy="true"] .tag-empty { border-color: var(--accent-line); }
+.exempt { padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.exempt-title { font-size: 14px; font-weight: 700; color: var(--text-2); }
+.exempt-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* 名單 */
+.two-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.two-col > .col-form { order: 2; }
+.fold > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--tap); padding: 0 16px; cursor: pointer; font-weight: 700; font-size: 15px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: "▾"; color: var(--text-3); transition: transform .2s; }
+.fold[open] > summary::after { transform: rotate(180deg); }
+.fold-body { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+.divider { height: 1px; background: var(--line); border: 0; margin: 0; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr)); gap: 8px; }
+.mrow { display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 0 4px 0 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); min-width: 0; }
+.mrow[data-present="false"] { background: var(--surface-2); }
+.mrow[data-present="false"] .mname { color: var(--text-3); text-decoration: line-through; }
+.check { flex: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; border: 0; background: none; padding: 0; }
+.check span { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 14px; font-weight: 700; border: 1.5px solid var(--primary); background: var(--primary); color: var(--on-primary); }
+.mrow[data-present="false"] .check span { background: transparent; border-color: var(--line-strong); color: var(--text-3); }
+.seat { flex: none; font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; }
+.mrow[data-present="false"] .seat { background: var(--surface-3); }
+.mname { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 6px; }
+.mrow .btn-icon { font-size: 16px; }
+.btn-assigned { background: var(--cat-public-bg); border-color: var(--cat-public-line); }
+
+/* 工作項目 */
+.cat-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cat-tile { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; }
+.cat-tile[aria-pressed="true"] { background: var(--cat-bg); border-color: var(--cat-solid); box-shadow: 0 0 0 1px var(--cat-solid); }
+.cat-tile .ct-ico { font-size: 24px; line-height: 1; }
+.cat-tile .ct-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
+.cat-tile .ct-sub { font-size: 12px; color: var(--text-3); }
+.cat-tile[aria-pressed="true"] .ct-sub { color: var(--cat-fg); }
+.pick { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.pick button { min-height: var(--tap); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font-size: 14px; font-weight: 500; }
+.pick button[aria-pressed="true"] { background: var(--cat-solid); border-color: var(--cat-solid); color: var(--on-solid); font-weight: 700; }
+.icon-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.icon-grid button { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); font-size: 20px; padding: 0; }
+.check-row { display: flex; align-items: center; gap: 12px; min-height: var(--tap); font-weight: 700; font-size: 14px; cursor: pointer; }
+.check-row input[type="checkbox"]:not(.switch) { width: 22px; height: 22px; accent-color: var(--accent); }
+
+.tlist { display: flex; flex-direction: column; }
+.thead { display: none; }
+.trow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "no main heavy" "ctrl ctrl ctrl"; gap: 6px 10px; padding: 14px 16px; border-top: 1px solid var(--line); align-items: center; }
+.trow[data-assigned="true"] { background: var(--primary-soft); }
+.trow .t-no { grid-area: no; font-size: 13px; font-weight: 700; color: var(--text-3); text-align: center; font-variant-numeric: tabular-nums; }
+.trow .t-main { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.trow .t-name { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.trow .t-desc { font-size: 12.5px; color: var(--text-3); }
+.trow .t-heavy { grid-area: heavy; }
+.trow .t-ctrl { grid-area: ctrl; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.t-acts { display: flex; align-items: center; gap: 2px; }
+.heavy-btn { opacity: .4; }
+.heavy-btn[aria-pressed="true"] { opacity: 1; background: var(--accent-soft); border-color: var(--accent-line); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+.stepper button { width: var(--tap); height: var(--tap); border: 0; background: var(--surface-2); font-size: 18px; font-weight: 700; padding: 0; }
+.stepper button:hover { background: var(--surface-3); }
+.stepper output { min-width: 52px; text-align: center; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+/* 吐司 */
+.toast { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: var(--r-md); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; box-shadow: var(--shadow-2); }
+
+/* ============ 手機：抽籤動作變成固定在底部的操作列 ============ */
+.action { display: contents; }
+.action-copy { padding: 12px 16px; background: var(--primary-soft); border: 1px solid var(--primary-line); border-radius: var(--r-lg); }
+.action-title { font-size: 16px; }
+.action-btns { order: 99; position: sticky; bottom: var(--dock-offset); z-index: 15; margin-inline: calc(var(--pad) * -1); margin-bottom: -24px; padding: 10px var(--pad); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -10px 24px -14px rgba(0, 0, 0, .35); }
+.action-btns .btn-primary { flex: 1; min-width: 0; }
+.shell-top .action-btns { margin-bottom: -24px; }
+
+/* ============ iPad 直向（≥768） ============ */
+@media (min-width: 768px) {
+  .app { --pad: 24px; }
+  .page-title { font-size: 26px; }
+  .overview { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ov-cell { padding: 16px 18px; }
+
+  .action { display: flex; }
+  .action-copy { padding: 0; background: none; border: 0; border-radius: 0; }
+  .action-title { font-size: 20px; }
+  .action-btns { order: 0; position: static; margin: 0; padding: 0; background: none; border: 0; box-shadow: none; }
+  .shell-top .action-btns, .shell-side .action-btns { margin-bottom: 0; }
+  .action-btns .btn-primary { flex: none; }
+
+  .export { display: flex; width: auto; gap: 8px; }
+  .xbtn { flex-direction: row; gap: 6px; min-height: var(--tap-sm); padding: 0 14px; font-size: 13px; }
+  .xbtn .brand-dot { position: static; width: 8px; height: 8px; margin-left: 2px; }
+  .sheet { padding: 20px; gap: 18px; }
+  .results-title { font-size: 20px; }
+
+  .two-col { grid-template-columns: 320px minmax(0, 1fr); }
+  .two-col > .col-form { order: 0; }
+  .cat-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pick { grid-template-columns: repeat(4, 1fr); }
+  .thead { display: grid; grid-template-columns: 40px 52px minmax(0, 1fr) 150px 132px; gap: 10px; padding: 10px 16px; font-size: 12px; font-weight: 700; color: var(--text-3); }
+  .trow { grid-template-columns: 40px 52px minmax(0, 1fr) 150px 132px; grid-template-areas: "no heavy main step acts"; }
+  .trow .t-ctrl { display: contents; }
+  .trow .t-step { grid-area: step; }
+  .trow .t-acts { grid-area: acts; justify-content: flex-end; }
+
+  /* 外框：頂部 */
+  .topnav-inner { padding: 0 var(--pad); grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand tabs acts"; }
+  .topnav .brand { padding-right: 8px; }
+  .topnav-tabs { margin-inline: 0; border-top: 0; justify-self: center; display: flex; gap: 4px; }
+  .ttab { padding: 0 18px; min-height: 64px; }
+
+  /* 外框：iPad 側軌 */
+  .shell-side { display: grid; grid-template-columns: 92px minmax(0, 1fr); --dock-offset: 0px; }
+  .shell-side .topbar, .shell-side .tabbar { display: none; }
+  .rail { display: flex; flex-direction: column; align-items: stretch; gap: 6px; position: sticky; top: 0; height: var(--viewport-h, 100dvh); padding: 14px 10px; background: var(--surface); border-right: 1px solid var(--line); }
+  .rail .brand-mark { margin: 2px auto 10px; }
+  .rail-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 60px; border: 0; border-radius: var(--r-md); background: none; color: var(--text-3); font-size: 12px; font-weight: 500; }
+  .rail-item .nav-ico { width: auto; font-size: 22px; }
+  .rail-item:hover { background: var(--surface-2); }
+  .rail-item[aria-current="page"] { background: var(--primary-soft); color: var(--primary-ink); font-weight: 700; }
+  .rail-spacer { flex: 1; }
+}
+
+/* ============ 桌機（≥1024） ============ */
+@media (min-width: 1024px) {
+  .app { --pad: 32px; --tap: 40px; --tap-sm: 34px; }
+  .page-title { font-size: 28px; }
+  .main { padding-top: 28px; padding-bottom: 40px; gap: 24px; }
+  .tcard { padding: 16px; }
+  .two-col { grid-template-columns: 340px minmax(0, 1fr); gap: 20px; }
+
+  .shell-side { grid-template-columns: 244px minmax(0, 1fr); }
+  .rail { display: none; }
+  .sidebar { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: var(--viewport-h, 100dvh); padding: 20px 14px 16px; background: var(--surface); border-right: 1px solid var(--line); }
+  .sidebar .brand { padding: 4px 8px 18px; }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .side-ver { font-size: 12px; color: var(--text-3); padding: 0 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app * { transition: none !important; }
+}
+
+/* ============================================================
+   其餘頁面與共用：歷史、設定、彈窗、提示訊息、抽籤動畫
+   ============================================================ */
+[v-cloak] { display: none !important; }
+.hidden { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+.page { display: contents; }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.seg label { position: relative; }
+.seg label input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:focus-within { outline: 2px solid var(--primary); outline-offset: 1px; }
+.seg .is-on { background: var(--surface); color: var(--primary-ink); font-weight: 700; box-shadow: var(--shadow-1); }
+.btn-label { cursor: pointer; }
+.btn-assigned-on { background: var(--cat-public-bg); border-color: var(--cat-public-line); }
+
+/* 抽籤動畫（保留原本六種效果的動作，改用新的色票） */
+.slot-rows { display: flex; flex-direction: column; gap: 6px; }
+.tag-draw { background: var(--accent-soft); border: 1px solid var(--ring); color: var(--accent-ink); }
+.tag-draw > span { padding: 0 12px; }
+@keyframes slotShuffle { 0% { transform: translateY(-3px); opacity: .8; } 50% { transform: translateY(3px); opacity: 1; } 100% { transform: translateY(0); opacity: .8; } }
+@keyframes cardFlipAnim { 0% { transform: rotateY(0deg); } 50% { transform: rotateY(90deg); } 100% { transform: rotateY(0deg); } }
+@keyframes glowPulse { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(242, 184, 75, .8)); } 50% { opacity: .7; filter: drop-shadow(0 0 2px rgba(242, 184, 75, .3)); } }
+@keyframes popBounce { 0% { transform: scale(.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+@keyframes diceSpin { 0% { transform: rotate(0deg) scale(.9); } 50% { transform: rotate(180deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+.anim-shuffle { animation: slotShuffle .12s infinite ease-in-out; }
+.anim-flip { animation: cardFlipAnim .3s infinite ease-in-out; }
+.anim-glow { animation: glowPulse .4s infinite ease-in-out; }
+.anim-bounce { animation: popBounce .3s infinite ease-out; }
+.anim-dice { animation: diceSpin .35s infinite linear; }
+
+/* 歷史記錄 */
+.hlist { display: flex; flex-direction: column; gap: 10px; }
+.hitem { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
+.hhead { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; width: 100%; min-height: 64px; padding: 10px 16px; border: 0; background: none; text-align: left; }
+.hhead:hover { background: var(--surface-2); }
+.h-time { font-weight: 700; font-size: 15px; }
+.h-sub { font-size: 13px; color: var(--text-3); }
+.h-toggle { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--primary-ink); display: inline-flex; align-items: center; gap: 6px; }
+.hbody { padding: 16px; border-top: 1px solid var(--line); background: var(--surface-2); display: flex; flex-direction: column; gap: 14px; }
+.hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px; }
+.hres { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.hres-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 14px; }
+.hres-head > span:first-child { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.empty-state { padding: 48px 16px; text-align: center; color: var(--text-3); display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.empty-state .big { font-size: 40px; line-height: 1; }
+.history-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.seg-label { padding: 0 10px 0 12px; font-size: 12px; font-weight: 700; color: var(--text-3); display: flex; align-items: center; }
+
+/* 系統設定 */
+.set-card { padding: 20px 16px; display: flex; flex-direction: column; gap: 24px; }
+.set-sec { display: flex; flex-direction: column; gap: 12px; }
+.set-sec + .set-sec { padding-top: 24px; border-top: 1px solid var(--line); }
+.set-title { font-size: 17px; font-weight: 700; }
+.set-note { font-size: 13px; color: var(--text-3); }
+.opt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); min-width: 0; }
+.opt-stack { flex-direction: column; align-items: stretch; }
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: var(--tap); cursor: pointer; }
+.opt-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.opt-title { font-weight: 700; font-size: 15px; }
+.opt-desc { font-size: 12.5px; color: var(--text-3); line-height: 1.45; }
+label.opt { cursor: pointer; }
+label.opt:hover { border-color: var(--line-strong); }
+.picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.picker button { height: 44px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); font-size: 20px; padding: 0; }
+.picker button[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.btn-between { justify-content: space-between; width: 100%; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.maint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.maint-danger { border-color: var(--danger-line); background: var(--danger-soft); }
+.maint-danger .opt-desc { color: var(--text-2); }
+
+/* 彈窗：手機是從底部滑上來的面板，iPad 以上置中 */
+.scrim { position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
+.modal { width: 100%; max-height: 90dvh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--shadow-2); padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 16px; animation: sheetUp .22s ease-out; }
+@keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.modal-body { display: flex; flex-direction: column; gap: 14px; }
+.modal-list { display: flex; flex-direction: column; gap: 8px; max-height: min(52dvh, 440px); overflow: auto; }
+.modal-sub { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 700; font-size: 14px; }
+.modal-sub > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; }
+.pickrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: var(--tap); padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; font-size: 14px; font-weight: 500; width: 100%; min-width: 0; }
+.pickrow:hover { background: var(--surface-2); }
+.pickrow > span { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pickrow > span > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pickrow small { font-size: 12px; color: var(--text-3); flex: none; }
+.pickrow[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-ink); font-weight: 700; }
+.pickrow[aria-pressed="true"] small { color: var(--primary-ink); }
+.pickrow[disabled] { opacity: .45; cursor: not-allowed; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 8px; max-height: min(52dvh, 440px); overflow: auto; }
+.icon-pick { padding: 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.btn-icon-pick { width: 56px; padding: 0; font-size: 20px; flex: none; }
+
+/* 提示訊息 */
+.toast-wrap { position: fixed; left: 0; right: 0; bottom: calc(var(--tabbar-h) + 88px + env(safe-area-inset-bottom, 0px)); z-index: 70; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.toast-enter-active, .toast-leave-active { transition: opacity .2s, transform .2s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(8px); }
+
+/* 頁尾 */
+.app-footer { padding: 24px var(--pad) 28px; border-top: 1px solid var(--line); color: var(--text-3); font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; text-align: center; align-items: center; }
+.app-footer a { color: var(--primary-ink); }
+.app-footer .copyright-note { font-size: 12px; }
+
+@media (min-width: 768px) {
+  .set-card { padding: 28px; }
+  .opt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scrim { align-items: center; padding: 24px; }
+  .modal { max-width: 480px; border: 1px solid var(--line); border-radius: var(--r-xl); padding: 24px; animation-name: modalIn; }
+  .modal-lg { max-width: 560px; }
+  @keyframes modalIn { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+  .app-footer { flex-direction: row; justify-content: space-between; text-align: left; flex-wrap: wrap; }
+  .app-footer .copyright-note { flex-basis: 100%; }
+}
+@media (min-width: 1024px) {
+  .toast-wrap { left: auto; right: 24px; bottom: 24px; padding: 0; justify-content: flex-end; }
+}
+@media print {
+  body * { visibility: hidden; }
+  #print-pdf-template, #print-pdf-template * { visibility: visible; }
+  #print-pdf-template { position: absolute; left: 0; top: 0; display: block !important; width: 100%; }
+}
+@page { size: A4 landscape; margin: 8mm; }
+
+.brand-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+.xbtn-inline { gap: 8px; }
+.xbtn-inline .brand-dot { position: static; }
+
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+<body>
 
-  <div id="app" v-cloak class="flex-grow flex flex-col">
-    <!-- 頂部導航與頁籤 Header -->
-    <header class="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 dark:from-slate-900 dark:via-teal-950 dark:to-slate-900 text-white shadow-lg sticky top-0 z-30 transition-colors">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16 gap-3">
-          <div class="flex items-center space-x-3 min-w-0">
-            <div class="bg-white/20 p-2 rounded-xl backdrop-blur-md text-2xl">
-              🧹
-            </div>
-            <div class="min-w-0">
-              <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
-                <span class="truncate">掃地工作小幫手</span>
-                <span class="text-xs bg-emerald-400/30 text-emerald-100 px-2 py-0.5 rounded-full font-normal border border-emerald-300/30">v2.11</span>
-              </h1>
-              <p class="text-xs text-teal-100 hidden sm:block">公平、快速、有趣的抽籤工具</p>
-            </div>
-          </div>
+  <div id="app" v-cloak class="app shell-side">
 
-          <!-- 頂部右側功能鈕 -->
-          <div class="flex items-center space-x-2 flex-shrink-0">
-            <!-- 黑暗模式切換鈕 -->
-            <button 
-              @click="toggleDarkMode" 
-              :title="isDarkMode ? '切換為亮色模式' : '切換為暗黑模式'" 
-              class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1 font-semibold"
-            >
-              <span>{{ isDarkMode ? '☀️' : '🌙' }}</span>
-              <span class="hidden sm:inline">{{ isDarkMode ? '亮色' : '暗黑' }}</span>
-            </button>
-
-            <button @click="resetAllData" title="清空全站資料" class="text-xs bg-black hover:bg-slate-950 text-yellow-300 px-3 py-1.5 rounded-lg border border-yellow-400 shadow-[0_0_0_1px_rgba(250,204,21,0.35)] transition flex items-center gap-1 font-black">
-              <span class="text-sm leading-none">☢️</span>
-              <span class="hidden md:inline">全部重設</span>
-            </button>
-            <button @click="exportBackup" title="導出設定" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-              <span class="hidden md:inline">備份</span>
-            </button>
-          </div>
+    <!-- 桌機側欄 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🧹</span>
+        <div class="brand-text">
+          <span class="brand-name">掃地工作小幫手</span>
+          <span class="brand-sub">v2.12 · 公平、快速、有趣</span>
         </div>
-
-        <!-- 導航分頁 -->
-        <nav class="flex space-x-1 sm:space-x-4 border-t border-teal-500/30 dark:border-slate-800 overflow-x-auto custom-scrollbar">
-          <button 
-            v-for="tab in tabs" 
-            :key="tab.id"
-            @click="currentTab = tab.id"
-            :class="[
-              currentTab === tab.id 
-                ? 'bg-white text-teal-800 dark:bg-slate-800 dark:text-teal-400 font-bold shadow-md border-b-2 border-teal-500' 
-                : 'text-teal-100 hover:bg-teal-600/50 hover:text-white dark:text-slate-300 dark:hover:bg-slate-800/60',
-              'px-4 py-2.5 rounded-t-lg text-sm font-medium transition flex items-center gap-2 whitespace-nowrap'
-            ]"
-          >
-            <svg v-if="tab.id === 'members'" class="w-4 h-4 opacity-90 inline-block" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
-            </svg>
-            <span v-else>{{ tab.icon }}</span>
-            <span>{{ tab.name }}</span>
-          </button>
-        </nav>
       </div>
-    </header>
-
-    <!-- 主要內容區 -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-      <!-- Toast 提示訊息 -->
-      <transition enter-active-class="transform ease-out duration-300 transition" enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2" enter-to-class="translate-y-0 opacity-100 sm:translate-x-0" leave-active-class="transition ease-in duration-100" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="toastMessage" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 dark:border-slate-300">
-          <span class="text-xl">{{ toastIcon }}</span>
-          <span class="text-sm font-medium">{{ toastMessage }}</span>
+      <nav class="nav-group" aria-label="主要頁面">
+        <button v-for="tab in tabs" :key="tab.id" type="button" class="nav-item" :aria-current="currentTab === tab.id ? 'page' : null" @click="currentTab = tab.id">
+          <span class="nav-ico" aria-hidden="true">{{ tab.icon }}</span>{{ tab.name }}
+        </button>
+      </nav>
+      <div class="side-foot">
+        <div class="seg seg-full" role="group" aria-label="外觀">
+          <button type="button" :aria-pressed="String(!isDarkMode)" @click="setThemeMode('light')">☀️ 淺色</button>
+          <button type="button" :aria-pressed="String(isDarkMode)" @click="setThemeMode('dark')">🌙 深色</button>
         </div>
-      </transition>
+        <button type="button" class="btn btn-block" @click="exportBackup" title="下載設定備份">💾 下載備份</button>
+      </div>
+    </aside>
 
-      <!-- ================= 頁籤 1: 抽籤工作台 (LOTTERY) ================= -->
-      <div v-show="currentTab === 'draw'" class="space-y-6">
-        
-        <!-- 頂部數據看板 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          
-          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex items-center justify-between">
-            <div>
-              <div class="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">班級人數</div>
-              <div class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-2">
-                <span>{{ members.length }}</span>
-                <span class="text-xs font-normal text-slate-500 dark:text-slate-400">人</span>
-              </div>
-            </div>
-            <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center text-xl font-bold">
-              🏫
-            </div>
-          </div>
+    <!-- iPad 側軌 -->
+    <aside class="rail">
+      <span class="brand-mark" aria-hidden="true">🧹</span>
+      <button v-for="tab in tabs" :key="tab.id" type="button" class="rail-item" :aria-current="currentTab === tab.id ? 'page' : null" @click="currentTab = tab.id">
+        <span class="nav-ico" aria-hidden="true">{{ tab.icon }}</span>{{ tab.short }}
+      </button>
+      <span class="rail-spacer"></span>
+      <button type="button" class="btn btn-ghost btn-icon" @click="toggleDarkMode" :title="isDarkMode ? '切換為淺色' : '切換為深色'" :aria-label="isDarkMode ? '切換為淺色' : '切換為深色'">{{ isDarkMode ? '☀️' : '🌙' }}</button>
+      <button type="button" class="btn btn-ghost btn-icon" @click="exportBackup" title="下載設定備份" aria-label="下載設定備份">💾</button>
+    </aside>
 
-          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex items-center justify-between">
-            <div>
-              <div class="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">應抽籤人數</div>
-              <div class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-2">
-                <span>{{ presentMembers.length }}</span>
-                <span class="text-xs font-normal text-slate-500 dark:text-slate-400">人 (免掃 {{ nonPresentMembers.length }} 人)</span>
-              </div>
-            </div>
-            <div class="w-12 h-12 bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center text-xl font-bold">
-              👥
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex items-center justify-between">
-            <div>
-              <div class="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">工作所需人數</div>
-              <div class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-2">
-                <span>{{ totalRequiredSlots }}</span>
-                <span class="text-xs font-normal text-slate-500 dark:text-slate-400">人 (共 {{ tasks.length }} 項)</span>
-              </div>
-            </div>
-            <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center text-xl font-bold">
-              🧹
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex items-center justify-between">
-            <div>
-              <div class="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">人力供給狀態</div>
-              <div class="mt-1 flex items-center gap-2">
-                <span v-if="matchStatus === 'exact'" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 人數剛好符合
-                </span>
-                <span v-else-if="matchStatus === 'excess'" class="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
-                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> 多出 {{ presentMembers.length - totalRequiredSlots }} 人 (將輪空)
-                </span>
-                <span v-else-if="matchStatus === 'shortage'" class="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                  <span class="w-2 h-2 rounded-full bg-amber-500"></span> 缺少 {{ totalRequiredSlots - presentMembers.length }} 人手
-                </span>
-              </div>
-            </div>
-            <div class="w-12 h-12 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl flex items-center justify-center text-xl">
-              ⚖️
-            </div>
-          </div>
-
+    <div class="content">
+      <!-- 手機頂欄 -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">🧹</span>
+          <div class="brand-text"><span class="brand-name">掃地工作小幫手</span></div>
         </div>
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-ghost btn-icon" @click="toggleDarkMode" :title="isDarkMode ? '切換為淺色' : '切換為深色'" :aria-label="isDarkMode ? '切換為淺色' : '切換為深色'">{{ isDarkMode ? '☀️' : '🌙' }}</button>
+          <button type="button" class="btn btn-ghost btn-icon" @click="exportBackup" title="下載設定備份" aria-label="下載設定備份">💾</button>
+        </div>
+      </header>
 
-        <!-- 抽籤控制面板 -->
-        <div class="bg-gradient-to-br from-slate-900 to-teal-950 dark:from-slate-950 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl pointer-events-none select-none">
-            🎲
+      <main class="main">
+
+        <!-- 提示訊息 -->
+        <transition name="toast">
+          <div v-if="toastMessage" class="toast-wrap" role="status" aria-live="polite">
+            <div class="toast"><span aria-hidden="true">{{ toastIcon }}</span><span>{{ toastMessage }}</span></div>
           </div>
+        </transition>
 
-          <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div class="space-y-1 text-center md:text-left">
-              <h2 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3 justify-center md:justify-start">
-                <span>準備進行掃地工作抽籤</span>
-              </h2>
-              <div v-if="manuallyAssignedMembersCount > 0" class="text-xs text-amber-300 font-semibold pt-1">
-                🧹 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，直接鎖定不參與隨機抽籤。
+        <!-- ================= 頁籤 1: 抽籤工作台 ================= -->
+        <div v-show="currentTab === 'draw'" class="page">
+          <div class="page-head"><div><h1 class="page-title">抽籤工作台</h1></div></div>
+
+          <section class="overview" aria-label="概況">
+            <div class="ov-cell">
+              <div class="ov-label"><span aria-hidden="true">🏫</span>班級人數</div>
+              <div class="ov-value"><span>{{ members.length }}</span><span class="ov-unit">人</span></div>
+            </div>
+            <div class="ov-cell">
+              <div class="ov-label"><span aria-hidden="true">👥</span>應抽籤人數</div>
+              <div class="ov-value"><span>{{ presentMembers.length }}</span><span class="ov-unit">人（免掃 {{ nonPresentMembers.length }} 人）</span></div>
+            </div>
+            <div class="ov-cell">
+              <div class="ov-label"><span aria-hidden="true">🧹</span>工作所需人數</div>
+              <div class="ov-value"><span>{{ totalRequiredSlots }}</span><span class="ov-unit">人（共 {{ tasks.length }} 項）</span></div>
+            </div>
+            <div class="ov-cell">
+              <div class="ov-label"><span aria-hidden="true">⚖️</span>人力供給狀態</div>
+              <div class="ov-value">
+                <span v-if="matchStatus === 'exact'" class="chip chip-ok"><i class="dotmark"></i>人數剛好符合</span>
+                <span v-else-if="matchStatus === 'excess'" class="chip chip-info"><i class="dotmark"></i>多出 {{ presentMembers.length - totalRequiredSlots }} 人（將輪空）</span>
+                <span v-else-if="matchStatus === 'shortage'" class="chip chip-warn"><i class="dotmark"></i>缺少 {{ totalRequiredSlots - presentMembers.length }} 人手</span>
               </div>
             </div>
+          </section>
 
-            <!-- 控制按鈕組：[ 🙏 抽一人 ] ➔ [ 🎲 抽全部 ] ➔ [ 🗑️ (純Icon) ] -->
-            <div class="w-full md:w-auto flex flex-wrap sm:flex-nowrap items-center justify-center gap-3">
-              
-              <!-- 🙏 單獨抽一人按鈕 (全工作無分一般/辛苦，純隨機大抽籤) -->
-              <button 
-                @click="drawSingleMember"
-                :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
-                class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black px-5 py-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
-                title="按一次在全體未滿工作 (無分一般/辛苦) 中隨機抽出一名同學"
-              >
-                <span class="text-xl">🙏</span>
-                <span class="text-base font-bold whitespace-nowrap">抽一人</span>
+          <section class="action">
+            <div class="action-copy">
+              <h2 class="action-title">準備進行掃地工作抽籤</h2>
+              <p v-if="manuallyAssignedMembersCount > 0" class="action-note">🧹 已有 {{ manuallyAssignedMembersCount }} 位同學經手動指定工作，直接鎖定不參與隨機抽籤。</p>
+            </div>
+            <div class="action-btns">
+              <button type="button" class="btn btn-accent btn-lg" style="padding: 0 18px" @click="drawSingleMember" :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0" title="按一次在全體未滿工作（無分一般／辛苦）中隨機抽出一名同學">
+                <span aria-hidden="true">🙏</span>抽一人
               </button>
-
-              <!-- 抽全部 (全體抽籤按鈕) -->
-              <button 
-                @click="startDraw" 
-                :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0"
-                :class="[
-                  isDrawing || presentMembers.length === 0 || tasks.length === 0
-                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95'
-                ]"
-                class="px-8 py-4 rounded-2xl text-lg font-bold transition transform flex items-center justify-center gap-2 min-w-[150px]"
-              >
-                <span v-if="isDrawing" class="inline-block animate-spin text-xl">🌀</span>
-                <span v-else class="text-xl">🎲</span>
+              <button type="button" class="btn btn-primary btn-lg" @click="startDraw" :disabled="isDrawing || presentMembers.length === 0 || tasks.length === 0">
+                <span v-if="isDrawing" class="spin" aria-hidden="true">🌀</span>
+                <span v-else aria-hidden="true">🎲</span>
                 <span>{{ isDrawing ? '抽籤中...' : '抽全部' }}</span>
               </button>
-
-              <!-- 純 🗑️ 垃圾桶按鈕 -->
-              <button 
-                @click="confirmClearDrawResults"
-                :disabled="isDrawing || (!hasDrawRun && currentResults.length === 0)"
-                class="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold p-4 rounded-2xl shadow-lg transition flex items-center justify-center hover:scale-105 active:scale-95"
-                title="清除當前抽籤結果"
-              >
-                <span class="text-xl">🗑️</span>
-              </button>
+              <button type="button" class="btn btn-danger btn-lg btn-icon" style="padding: 0" @click="confirmClearDrawResults" :disabled="isDrawing || (!hasDrawRun && currentResults.length === 0)" title="清除當前抽籤結果" aria-label="清除當前抽籤結果">🗑️</button>
             </div>
-          </div>
-        </div>
+          </section>
 
-        <!-- 本班掃地工作分配表 (5大官方品牌按鈕) -->
-        <div class="space-y-4">
-          <div class="flex items-center justify-between flex-wrap gap-3">
-            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <span>📋 本班掃地工作分配表</span>
-              <span v-if="hasDrawRun && drawTimestamp" class="text-xs font-normal text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2.5 py-1 rounded-full">
-                {{ drawTimestamp }} 抽籤完成
-              </span>
-              <span v-else class="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2.5 py-1 rounded-full border border-amber-300 dark:border-amber-800">
-                ⏳ 待抽籤狀態
-              </span>
-            </h3>
-
-            <!-- 5 大軟體專屬品牌色彩按鈕 -->
-            <div v-if="tasks.length > 0" class="flex flex-wrap gap-2">
-              <button @click="copyTextResult" class="bg-[#06C755] hover:bg-[#05b34c] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                <span>💬 LINE</span>
-              </button>
-              <button @click="downloadResultImage" class="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                <span>🖼️ PNG</span>
-              </button>
-              <button @click="exportPDF" class="bg-[#E1251B] hover:bg-[#c91d14] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                <span>📄 PDF</span>
-              </button>
-              <button @click="exportExcel" class="bg-[#107C41] hover:bg-[#0e6b37] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                <span>📊 Excel</span>
-              </button>
-              <button @click="exportWord" class="bg-[#185ABD] hover:bg-[#13499b] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                <span>📝 Word</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 可截圖/預覽工作分配網格卡片區 (膠囊背景與文字 100% 水平垂直雙向居中對齊) -->
-          <div id="result-export-card" class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6 transition-colors">
-            
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-              <div>
-                <h4 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <span>🧹 本班掃地工作分配對照表</span>
-                </h4>
-                <p class="text-xs text-slate-400">掃地工作小幫手 • {{ drawTimestamp || '準備抽籤中' }}</p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-900 inline-flex items-center justify-center">
-                  應抽籤 {{ presentMembers.length }} 人 / 工作需求 {{ totalRequiredSlots }} 位
-                </span>
+          <section class="results">
+            <div class="results-head">
+              <h2 class="results-title">
+                <span>📋 本班掃地工作分配表</span>
+                <span v-if="hasDrawRun && drawTimestamp" class="chip chip-ok">{{ drawTimestamp }} 抽籤完成</span>
+                <span v-else class="chip chip-warn">⏳ 待抽籤狀態</span>
+              </h2>
+              <div v-if="tasks.length > 0" class="export" role="group" aria-label="匯出">
+                <button type="button" class="btn btn-sm xbtn" @click="copyTextResult"><span class="xico" aria-hidden="true">💬</span><span>LINE</span><i class="brand-dot" style="--brand: #06C755"></i></button>
+                <button type="button" class="btn btn-sm xbtn" @click="downloadResultImage"><span class="xico" aria-hidden="true">🖼️</span><span>PNG</span><i class="brand-dot" style="--brand: #0284c7"></i></button>
+                <button type="button" class="btn btn-sm xbtn" @click="exportPDF"><span class="xico" aria-hidden="true">📄</span><span>PDF</span><i class="brand-dot" style="--brand: #E1251B"></i></button>
+                <button type="button" class="btn btn-sm xbtn" @click="exportExcel"><span class="xico" aria-hidden="true">📊</span><span>Excel</span><i class="brand-dot" style="--brand: #107C41"></i></button>
+                <button type="button" class="btn btn-sm xbtn" @click="exportWord"><span class="xico" aria-hidden="true">📝</span><span>Word</span><i class="brand-dot" style="--brand: #185ABD"></i></button>
               </div>
             </div>
 
-            <!-- 工作卡片網格 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-              <div 
-                v-for="item in displayTaskCards" 
+            <div id="result-export-card" class="board">
+              <article
+                v-for="item in displayTaskCards"
                 :key="item.taskId"
-                :class="[
-                  activeDrawingTaskId === item.taskId ? 'ring-4 ring-amber-400 shadow-xl scale-[1.02]' : '',
-                  item.isHeavy ? 'border-amber-300 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20' : 'border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60'
-                ]"
-                class="rounded-2xl p-3 border transition flex flex-col gap-2 min-w-0"
+                class="tcard"
+                :data-cat="catId(item.category)"
+                :data-heavy="item.isHeavy ? 'true' : 'false'"
+                :data-active="activeDrawingTaskId === item.taskId ? 'true' : null"
               >
-                <div class="flex items-center justify-between gap-2 min-w-0">
-                  <span class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 min-w-0">
-                      <span class="text-xl flex-shrink-0">{{ item.taskIcon || '🧹' }}</span>
-                      <span class="truncate">{{ item.taskName }}</span>
-                      <span v-if="item.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold text-lg animate-pulse">🔨</span>
-                    </span>
-                    
-                    <span class="flex items-center gap-1.5 flex-shrink-0">
-                      <span
-                        :class="getCategoryBadgeClass(item.category)"
-                        class="text-xs font-bold px-2 py-1 rounded-md border inline-flex items-center justify-center text-center leading-none"
-                      >
-                        {{ item.category || '教室' }} ({{ item.requiredCount }}人)
+                <div class="tcard-head">
+                  <span class="tcard-icon" aria-hidden="true">{{ item.taskIcon || '🧹' }}</span>
+                  <div style="min-width: 0">
+                    <h3 class="tcard-name"><span>{{ item.taskName }}</span><span v-if="item.isHeavy" title="辛苦的工作" style="overflow: visible">🔨</span></h3>
+                    <p class="tcard-desc">{{ item.description || '尚未填寫說明' }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-danger btn-icon btn-sm"
+                    @click="clearTaskAssignments(item)"
+                    :disabled="isDrawing || !(item.assignedMembers && item.assignedMembers.length)"
+                    :title="(item.assignedMembers && item.assignedMembers.length) ? '清空此工作的人員對應' : '此工作目前沒有人員'"
+                    aria-label="清空此工作的人員對應"
+                  >🗑️</button>
+                </div>
+                <div class="tcard-meta">
+                  <span class="badge" :data-cat="catId(item.category)">{{ item.category || '教室' }} · {{ item.requiredCount }} 人</span>
+                </div>
+
+                <div class="slot-rows">
+                  <template v-if="isDrawing && activeDrawingTaskId === item.taskId && drawAnimationType !== 'none'">
+                    <div v-for="(row, rowIndex) in chunkPlaceholders(item.requiredCount)" :key="'drawing-row-' + rowIndex" class="slots">
+                      <span v-for="n in row" :key="n" class="tag tag-draw" :class="'anim-' + drawAnimationType">
+                        <span>{{
+                          drawAnimationType === 'flip' ? '🎴 揭曉中...' :
+                          drawAnimationType === 'glow' ? '✨ 揭曉中...' :
+                          drawAnimationType === 'bounce' ? '🎈 揭曉中...' :
+                          drawAnimationType === 'dice' ? '🎲 揭曉中...' :
+                          '🎰 滾動中...'
+                        }}</span>
                       </span>
-                      <button
-                        type="button"
-                        @click="clearTaskAssignments(item)"
-                        :disabled="isDrawing || !(item.assignedMembers && item.assignedMembers.length)"
-                        :title="(item.assignedMembers && item.assignedMembers.length) ? '清空此工作的人員對應' : '此工作目前沒有人員'"
-                        :class="(item.assignedMembers && item.assignedMembers.length) ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'"
-                        class="p-1 rounded-lg text-sm leading-none transition"
-                      >
-                        🗑️
-                      </button>
-                    </span>
-                </div>
-
-                <p class="text-xs text-slate-400 dark:text-slate-400 truncate min-w-0">{{ item.description || '尚未填寫說明' }}</p>
-
-                <div class="flex flex-col gap-1.5">
-                    <template v-if="isDrawing && activeDrawingTaskId === item.taskId && drawAnimationType !== 'none'">
-                      <div
-                        v-for="(row, rowIndex) in chunkPlaceholders(item.requiredCount)"
-                        :key="'drawing-row-' + rowIndex"
-                        class="flex flex-wrap gap-1.5"
-                      >
-                        <span 
-                          v-for="n in row" 
-                          :key="n"
-                          :class="[
-                            drawAnimationType === 'flip' ? 'animate-card-flip bg-amber-400 text-slate-950 font-black' :
-                            drawAnimationType === 'glow' ? 'animate-glow bg-amber-500 text-white font-black' :
-                            drawAnimationType === 'bounce' ? 'animate-bounce-in bg-amber-400 text-slate-950 font-black' :
-                            drawAnimationType === 'dice' ? 'animate-dice-spin bg-teal-500 text-white font-black' :
-                            'animate-shuffle bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold'
-                          ]"
-                          class="text-xs px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm inline-flex items-center justify-center leading-none"
-                        >
-                          {{ 
-                            drawAnimationType === 'flip' ? '🎴 揭曉中...' : 
-                            drawAnimationType === 'glow' ? '✨ 揭曉中...' :
-                            drawAnimationType === 'bounce' ? '🎈 揭曉中...' :
-                            drawAnimationType === 'dice' ? '🎲 揭曉中...' :
-                            '🎰 滾動中...' 
-                          }}
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div v-for="(memberRow, rowIndex) in chunkTaskMembers(item)" :key="'member-row-' + rowIndex" class="slots">
+                      <template v-for="slot in memberRow" :key="slot.key">
+                        <span v-if="slot.member" class="tag" :class="{ 'tag-manual': slot.member.isManual }">
+                          <b v-if="slot.member.seatNo">{{ String(slot.member.seatNo).padStart(2, '0') }}</b>
+                          <span>{{ slot.member.name }}<i v-if="slot.member.isManual">指定</i></span>
                         </span>
-                      </div>
-                    </template>
-                    
-                    <template v-else>
-                      <div
-                        v-for="(memberRow, rowIndex) in chunkTaskMembers(item)"
-                        :key="'member-row-' + rowIndex"
-                        class="flex flex-wrap gap-1.5"
-                      >
-                        <template v-for="slot in memberRow" :key="slot.key">
-                          <span 
-                            v-if="slot.member"
-                            :class="[
-                              slot.member.isManual ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
-                            ]"
-                            class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 leading-none text-center"
-                          >
-                            <span v-if="slot.member.isManual" class="text-xs">🧹</span>
-                            <svg v-else class="w-3.5 h-3.5 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                            </svg>
-
-                            <span class="inline-block">{{ slot.member.seatNo ? slot.member.seatNo + '號 ' : '' }}{{ slot.member.name }}</span>
-                            <span v-if="slot.member.isManual" class="text-[10px] bg-white/20 px-1 py-0.5 rounded font-normal leading-none">指定</span>
-                          </span>
-
-                          <span 
-                            v-else
-                            class="bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 px-2.5 py-1.5 rounded-xl inline-flex items-center justify-center gap-1 leading-none text-center"
-                          >
-                            <span>❓</span>
-                            <span>{{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span>
-                          </span>
-                        </template>
-                      </div>
-                    </template>
+                        <span v-else class="tag tag-empty"><span>❓ {{ hasDrawRun ? '缺額/待補' : '待抽籤' }}</span></span>
+                      </template>
+                    </div>
+                  </template>
                 </div>
-            </div>
+              </article>
             </div>
 
-            <!-- 免掃地成員區 -->
-            <div v-if="exemptDisplayList.length > 0" class="bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 rounded-2xl p-4 mt-4">
-              <div class="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-sm mb-2">
-                <span>✨ 免掃地成員 (共 {{ exemptDisplayList.length }} 人，按座號排序)</span>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span 
-                  v-for="member in exemptDisplayList" 
-                  :key="member.id"
-                  class="bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm inline-flex items-center justify-center gap-1.5 leading-none"
-                >
-                  <span>✨</span>
-                  <span>{{ member.seatNo ? member.seatNo + '號 ' : '' }}{{ member.name }}</span>
+            <div v-if="exemptDisplayList.length > 0" class="exempt">
+              <div class="exempt-title">✨ 免掃地成員（共 {{ exemptDisplayList.length }} 人，按座號排序）</div>
+              <div class="exempt-list">
+                <span v-for="member in exemptDisplayList" :key="member.id" class="tag tag-plain">
+                  <b v-if="member.seatNo">{{ String(member.seatNo).padStart(2, '0') }}</b>
+                  <span>✨ {{ member.name }}</span>
                 </span>
               </div>
             </div>
-
-          </div>
+          </section>
         </div>
 
-      </div>
-
-      <!-- ================= 頁籤 2: 名單管理 ================= -->
-      <div v-show="currentTab === 'members'" class="space-y-6">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">👥 名單管理</h2>
-          </div>
-          
-          <div class="flex flex-wrap gap-2">
-            <button @click="setAllAttendance(true)" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
-              ✅ 全部參與抽籤
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
-            
-            <div class="space-y-3">
-              <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-                <span>✍️ 批次匯入名單</span>
-              </h3>
-              <p class="text-xs text-slate-400">請貼上成員姓名（每行一人），貼上後自動劃分座號：</p>
-              <textarea 
-                v-model="batchMemberInput"
-                rows="5"
-                placeholder="11陳小花&#10;12王大明&#10;13李小華..."
-                class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none custom-scrollbar"
-              ></textarea>
-              <button 
-                @click="addBatchMembers"
-                class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition"
-              >
-                加入名單
-              </button>
+        <!-- ================= 頁籤 2: 名單管理 ================= -->
+        <div v-show="currentTab === 'members'" class="page">
+          <div class="page-head">
+            <div><h1 class="page-title">名單管理</h1></div>
+            <div class="head-actions">
+              <button type="button" class="btn btn-soft" @click="setAllAttendance(true)">✅ 全部參與抽籤</button>
             </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-700 pt-5 space-y-3">
-              <div class="flex gap-2">
-                <input 
-                  type="text" 
-                  v-model="newMemberName" 
-                  @keyup.enter="addSingleMember"
-                  placeholder="輸入座號姓名如：1陳小花" 
-                  class="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                <button 
-                  @click="addSingleMember"
-                  class="bg-slate-800 hover:bg-slate-900 dark:bg-teal-700 dark:hover:bg-teal-600 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition whitespace-nowrap"
-                >
-                  + 新增
-                </button>
-              </div>
-            </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-700 pt-5 flex flex-col gap-2">
-              <button @click="resequenceSeats" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1">
-                🔢 依序重編座號
-              </button>
-              <button @click="clearAllMembers" class="w-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 font-bold py-2 rounded-xl text-xs transition border border-rose-200 dark:border-rose-900 flex items-center justify-center gap-1">
-                🗑️ 清空所有人
-              </button>
-            </div>
-
           </div>
 
-          <!-- 右側：班級同學名單 (無捲軸，動態多欄全顯在一頁) -->
-          <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-              <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-                <span>📋 班級同學名單 ({{ members.length }} 人)</span>
-              </h3>
-              <span class="text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-900">
-                參與抽籤 {{ presentMembers.length }} 人 / 免掃地 {{ nonPresentMembers.length }} 人
-              </span>
-            </div>
-
-            <div v-if="members.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              <div 
-                v-for="member in members" 
-                :key="member.id"
-                :class="[
-                  member.present ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm' : 'bg-slate-100 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 opacity-60'
-                ]"
-                class="px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1.5 transition hover:border-teal-400"
-              >
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <button 
-                    @click="toggleAttendance(member)"
-                    :class="[member.present ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 border-emerald-300' : 'text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300']"
-                    class="w-5 h-5 rounded-md border flex items-center justify-center font-bold text-xs flex-shrink-0 transition"
-                    :title="member.present ? '點擊取消參與' : '點擊標記為參與抽籤'"
-                  >
-                    {{ member.present ? '✓' : '✗' }}
-                  </button>
-                  
-                  <span v-if="member.seatNo" class="text-[10px] font-mono font-bold px-1 py-0.2 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600 flex-shrink-0">
-                    #{{ member.seatNo }}
-                  </span>
-
-                  <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate" :class="{ 'line-through text-slate-400': !member.present }">
-                    {{ member.name }}
-                  </span>
+          <div class="two-col">
+            <details class="card fold col-form" :open="isWide">
+              <summary>✍️ 新增與匯入名單</summary>
+              <div class="fold-body">
+                <div class="field">
+                  <label class="label" for="m-batch">批次匯入名單</label>
+                  <textarea id="m-batch" class="textarea" v-model="batchMemberInput" rows="5" placeholder="11陳小花&#10;12王大明&#10;13李小華..."></textarea>
+                  <p class="hint">請貼上成員姓名（每行一人），貼上後自動劃分座號。</p>
                 </div>
+                <button type="button" class="btn btn-primary btn-block" @click="addBatchMembers">加入名單</button>
+                <hr class="divider">
+                <div class="field">
+                  <label class="label" for="m-one">新增單一成員</label>
+                  <div class="input-row">
+                    <input id="m-one" type="text" class="input" v-model="newMemberName" @keyup.enter="addSingleMember" placeholder="輸入座號姓名，如 1陳小花">
+                    <button type="button" class="btn" @click="addSingleMember">＋ 新增</button>
+                  </div>
+                </div>
+                <hr class="divider">
+                <div class="btn-row">
+                  <button type="button" class="btn btn-sm" style="flex: 1" @click="resequenceSeats">🔢 依序重編座號</button>
+                  <button type="button" class="btn btn-sm btn-danger" style="flex: 1" @click="clearAllMembers">🗑️ 清空所有人</button>
+                </div>
+              </div>
+            </details>
 
-                <div class="flex items-center gap-1 flex-shrink-0">
-                  <button 
+            <section class="card card-pad" style="display: flex; flex-direction: column; gap: 14px; min-width: 0">
+              <div class="sheet-head">
+                <h3 class="card-title">📋 班級同學名單（{{ members.length }} 人）</h3>
+                <span class="chip chip-ok">參與抽籤 {{ presentMembers.length }} 人 / 免掃地 {{ nonPresentMembers.length }} 人</span>
+              </div>
+              <div v-if="members.length > 0" class="mgrid">
+                <div v-for="member in members" :key="member.id" class="mrow" :data-present="member.present ? 'true' : 'false'">
+                  <button type="button" class="check" @click="toggleAttendance(member)" :title="member.present ? '點擊取消參與' : '點擊標記為參與抽籤'" :aria-label="member.present ? '取消參與' : '標記為參與抽籤'">
+                    <span>{{ member.present ? '✓' : '✗' }}</span>
+                  </button>
+                  <span v-if="member.seatNo" class="seat">#{{ member.seatNo }}</span>
+                  <span class="mname">{{ member.name }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-icon"
+                    :class="member.assignedTaskId ? 'btn-assigned' : 'btn-ghost'"
                     @click="openAssignModal(member)"
-                    :class="[
-                      member.assignedTaskId ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    ]"
-                    class="w-6 h-6 rounded-md border flex items-center justify-center text-xs transition"
                     :title="member.assignedTaskId ? '已指定：' + getAssignedTaskName(member.assignedTaskId) : '點擊指派工作'"
-                  >
-                    <span>{{ getAssignedTaskIcon(member.assignedTaskId) || '🧹' }}</span>
-                  </button>
-
-                  <button 
-                    @click="removeMember(member.id)" 
-                    class="text-slate-300 hover:text-rose-500 p-0.5 transition rounded"
-                    title="刪除成員"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                  </button>
+                    aria-label="指派工作"
+                  >{{ getAssignedTaskIcon(member.assignedTaskId) || '🧹' }}</button>
+                  <button type="button" class="btn btn-sm btn-icon btn-ghost btn-danger" @click="removeMember(member.id)" title="刪除成員" aria-label="刪除成員">🗑️</button>
                 </div>
-
               </div>
-            </div>
-
-            <div v-else class="text-center py-12 text-slate-400 text-sm">
-              尚無同學資料，請在左側貼上名單或新增。
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ================= 頁籤 3: 掃地工作項目 ================= -->
-      <div v-show="currentTab === 'tasks'" class="space-y-6">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">🧹 掃地工作項目</h2>
-          </div>
-          
-          <div class="flex flex-wrap gap-2">
-            <button
-              @click="undoLastAction"
-              :disabled="undoStack.length === 0"
-              :title="undoStack.length > 0 ? '復原：' + undoStack[undoStack.length - 1].label : '目前沒有可復原的操作'"
-              :class="undoStack.length > 0 ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'"
-              class="border px-3 py-1.5 rounded-xl text-xs font-semibold transition"
-            >
-              ↩️ 復原<span v-if="undoStack.length > 0"> ({{ undoStack.length }})</span>
-            </button>
-            <button @click="clearAllTasks" class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-              🗑️ 清空所有工作
-            </button>
+              <div v-else class="empty-state">
+                <div class="big">👥</div>
+                <p>尚無同學資料，請在「新增與匯入名單」貼上名單或新增。</p>
+              </div>
+            </section>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          <!-- 左側：新增工作表單 -->
-          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-              <span>➕ 增加掃地工作項目</span>
-            </h3>
-
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作分類</label>
-                <div v-if="categories.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  <button 
-                    v-for="cat in categories" 
-                    :key="cat"
-                    type="button"
-                    @click="onSelectFormCategory(cat)"
-                    :class="[
-                      newTaskCategory === cat ? getCategoryActiveClass(cat) : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    ]"
-                    class="py-1.5 rounded-lg text-xs transition text-center font-bold"
-                  >
-                    {{ cat }}
-                  </button>
-                </div>
-                <p v-else class="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
-                  請先到系統設定勾選至少一個工作類別。
-                </p>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作名稱</label>
-                <div class="flex gap-2">
-                  <input 
-                    type="text" 
-                    v-model="newTaskIcon" 
-                    placeholder="圖示" 
-                    class="w-14 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                  <input 
-                    type="text" 
-                    v-model="newTaskName"
-                    @input="onTaskNameInput"
-                    placeholder="例如：擦黑板、搬餐桶、抬湯..." 
-                    class="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                </div>
-
-                <div class="flex flex-wrap gap-1.5 mt-2">
-                  <button 
-                    v-for="icon in presetIcons" 
-                    :key="icon"
-                    type="button"
-                    @click="newTaskIcon = icon"
-                    class="w-7 h-7 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg text-sm flex items-center justify-center transition"
-                  >
-                    {{ icon }}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">需求人數</label>
-                <input 
-                  type="number" 
-                  v-model.number="newTaskCount" 
-                  min="1" 
-                  max="50"
-                  class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-              </div>
-
-              <div class="pt-1">
-                <label class="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" v-model="newTaskIsHeavy" class="rounded text-amber-500 focus:ring-amber-400 w-4 h-4">
-                  <span class="text-xs font-bold flex items-center gap-1" :class="[newTaskIsHeavy ? 'text-amber-600' : 'text-slate-500']">
-                    <span>🔨</span> 標記為「辛苦的工作」
-                  </span>
-                </label>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">說明 / 注意事項 (可選)</label>
-                <input 
-                  type="text" 
-                  v-model="newTaskDesc" 
-                  placeholder="例如：包含水桶洗滌與放回" 
-                  class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-              </div>
-
-              <button 
-                @click="addNewTask"
-                :disabled="categories.length === 0"
-                :class="categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
-                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition"
-              >
-                增加掃地工作項目
-              </button>
-
-              <div class="border-t border-slate-100 dark:border-slate-700 pt-3 flex gap-2">
-                <button 
-                  @click="downloadExcelTemplate"
-                  class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1"
-                >
-                  📊 下載Excel範本
-                </button>
-                <button 
-                  @click="downloadCurrentTasksExcel"
-                  class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1"
-                >
-                  💾 匯出目前工作
-                </button>
-                <label class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 rounded-xl text-xs transition border border-slate-200 dark:border-slate-600 flex items-center justify-center gap-1 cursor-pointer">
-                  📤 匯入Excel
-                  <input type="file" accept=".csv, .xlsx, .xls" @change="importExcelTemplate" class="hidden">
-                </label>
-              </div>
+        <!-- ================= 頁籤 3: 掃地工作項目 ================= -->
+        <div v-show="currentTab === 'tasks'" class="page">
+          <div class="page-head">
+            <div><h1 class="page-title">掃地工作項目</h1></div>
+            <div class="head-actions">
+              <button
+                type="button"
+                class="btn btn-sm"
+                @click="undoLastAction"
+                :disabled="undoStack.length === 0"
+                :title="undoStack.length > 0 ? '復原：' + undoStack[undoStack.length - 1].label : '目前沒有可復原的操作'"
+              >↩️ 復原<span v-if="undoStack.length > 0">（{{ undoStack.length }}）</span></button>
+              <button type="button" class="btn btn-sm btn-danger" @click="clearAllTasks">🗑️ 清空所有工作</button>
             </div>
           </div>
 
-          <!-- 右側：掃地工作列表 -->
-          <div class="lg:col-span-2 space-y-4">
-            
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <template v-for="cat in categoryStats" :key="cat.name">
-                <div 
-                  v-if="cat.taskCount > 0"
-                  @click="selectedCategory = cat.name"
-                  :class="[
-                    selectedCategory === cat.name 
-                      ? getCategoryActiveClass(cat.name) 
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 border-slate-200 dark:border-slate-700'
-                  ]"
-                  class="p-3.5 rounded-2xl border cursor-pointer transition flex items-center justify-between"
-                >
-                  <div class="flex items-center gap-2.5">
-                    <span class="text-2xl">{{ cat.icon }}</span>
-                    <div>
-                      <div class="font-bold text-sm">{{ cat.name }}</div>
-                      <div class="text-xs opacity-80 mt-0.5">{{ cat.taskCount }} 項 • {{ cat.peopleCount }} 人</div>
+          <div class="two-col">
+            <details class="card fold col-form" :open="isWide">
+              <summary>➕ 增加掃地工作項目</summary>
+              <div class="fold-body">
+                <div class="field">
+                  <span class="label">工作分類</span>
+                  <div v-if="categories.length > 0" class="pick">
+                    <button v-for="cat in categories" :key="cat" type="button" :data-cat="catId(cat)" :aria-pressed="String(newTaskCategory === cat)" @click="onSelectFormCategory(cat)">{{ cat }}</button>
+                  </div>
+                  <p v-else class="hint">請先到系統設定勾選至少一個工作類別。</p>
+                </div>
+
+                <div class="field">
+                  <label class="label" for="t-name">工作名稱</label>
+                  <div class="input-row">
+                    <input type="text" class="input" style="flex: none; width: 64px; text-align: center; padding: 0 4px" v-model="newTaskIcon" placeholder="圖示" aria-label="工作圖示">
+                    <input id="t-name" type="text" class="input" v-model="newTaskName" @input="onTaskNameInput" placeholder="例如：擦黑板、搬餐桶、抬湯...">
+                  </div>
+                  <div class="icon-grid">
+                    <button v-for="icon in presetIcons" :key="icon" type="button" @click="newTaskIcon = icon" :aria-label="'選用圖示 ' + icon">{{ icon }}</button>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="label" for="t-count">需求人數</label>
+                  <input id="t-count" type="number" class="input" v-model.number="newTaskCount" min="1" max="50">
+                </div>
+
+                <label class="check-row"><input type="checkbox" v-model="newTaskIsHeavy"><span>🔨 標記為「辛苦的工作」</span></label>
+
+                <div class="field">
+                  <label class="label" for="t-desc">說明／注意事項（可選）</label>
+                  <input id="t-desc" type="text" class="input" v-model="newTaskDesc" placeholder="例如：包含水桶洗滌與放回">
+                </div>
+
+                <button type="button" class="btn btn-primary btn-block" @click="addNewTask" :disabled="categories.length === 0">增加掃地工作項目</button>
+
+                <hr class="divider">
+                <div class="btn-row">
+                  <button type="button" class="btn btn-sm" style="flex: 1" @click="downloadExcelTemplate">📊 下載範本</button>
+                  <button type="button" class="btn btn-sm" style="flex: 1" @click="downloadCurrentTasksExcel">💾 匯出</button>
+                  <label class="btn btn-sm btn-label" style="flex: 1">
+                    📤 匯入
+                    <input type="file" accept=".csv, .xlsx, .xls" @change="importExcelTemplate" class="hidden">
+                  </label>
+                </div>
+              </div>
+            </details>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+              <div class="cat-tiles">
+                <template v-for="cat in categoryStats" :key="cat.name">
+                  <button v-if="cat.taskCount > 0" type="button" class="cat-tile" :data-cat="catId(cat.name)" :aria-pressed="String(selectedCategory === cat.name)" @click="selectedCategory = cat.name">
+                    <span class="ct-ico" aria-hidden="true">{{ cat.icon }}</span>
+                    <span>
+                      <span class="ct-name" style="display: block">{{ cat.name }}</span>
+                      <span class="ct-sub">{{ cat.taskCount }} 項 · {{ cat.peopleCount }} 人</span>
+                    </span>
+                  </button>
+                </template>
+              </div>
+
+              <section class="card" style="overflow: hidden">
+                <div class="sheet-head" style="padding: 16px 16px 12px">
+                  <h3 class="card-title">📋 掃地工作列表（{{ filteredTasks.length }} 項）</h3>
+                </div>
+
+                <div v-if="filteredTasks.length > 0" class="tlist">
+                  <div class="thead"><span style="text-align: center">序</span><span style="text-align: center">辛苦</span><span>工作名稱與說明</span><span>需求人數</span><span style="text-align: right">操作</span></div>
+                  <div v-for="task in sortedFilteredTasks" :key="task.id" class="trow" :data-assigned="getTaskAssignedMembers(task.id).length > 0 ? 'true' : 'false'">
+                    <span class="t-no">{{ getTaskSequenceNo(task) }}</span>
+                    <div class="t-main">
+                      <div class="t-name">
+                        <span aria-hidden="true">{{ task.icon || '🧹' }}</span>
+                        <span>{{ task.name }}</span>
+                        <span class="badge" :data-cat="catId(task.category)">{{ task.category || '教室' }}</span>
+                        <span v-if="getTaskAssignedMembers(task.id).length > 0" class="chip chip-ok">已指派 {{ getTaskAssignedMembers(task.id).length }} 人</span>
+                      </div>
+                      <div v-if="task.description" class="t-desc">{{ task.description }}</div>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-icon btn-ghost t-heavy heavy-btn"
+                      :aria-pressed="String(!!task.isHeavy)"
+                      @click="toggleTaskHeavy(task)"
+                      :title="task.isHeavy ? '取消辛苦標記' : '標記為「辛苦的工作 🔨（看板置頂且最後抽）」'"
+                    >🔨</button>
+                    <div class="t-ctrl">
+                      <div class="stepper t-step">
+                        <button type="button" @click="updateTaskCount(task, -1)" aria-label="減少人數">−</button>
+                        <output>{{ task.count }} 人</output>
+                        <button type="button" @click="updateTaskCount(task, 1)" aria-label="增加人數">＋</button>
+                      </div>
+                      <div class="t-acts">
+                        <button type="button" class="btn btn-icon btn-sm btn-ghost" @click="openEditTaskModal(task)" title="編輯工作" aria-label="編輯工作">✏️</button>
+                        <button type="button" class="btn btn-icon btn-sm btn-ghost" @click="openTaskAssignModal(task)" title="指派人員" aria-label="指派人員">👤</button>
+                        <button type="button" class="btn btn-icon btn-sm btn-ghost btn-danger" @click="removeTask(task.id)" title="刪除工作" aria-label="刪除工作">🗑️</button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </template>
+                <div v-else class="empty-state">
+                  <p>當前分類（{{ selectedCategory }}）尚無工作項目。</p>
+                </div>
+              </section>
             </div>
-
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-                  <span>📋 掃地工作列表 ({{ filteredTasks.length }} 項)</span>
-                </h3>
-              </div>
-
-              <!-- 列表 Table -->
-              <div v-if="filteredTasks.length > 0" class="overflow-x-auto">
-                <table class="w-full text-left text-xs sm:text-sm">
-                  <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-semibold">
-                      <th class="pb-3 px-2 w-10 text-center">序</th>
-                      <th class="pb-3 px-2 w-10 text-center">辛苦</th>
-                      <th class="pb-3 px-2 w-20">分類</th>
-                      <th class="pb-3 px-2">工作名稱與說明</th>
-                      <th class="pb-3 px-2 text-center w-28">需求人數</th>
-                      <th class="pb-3 px-2 text-right w-24">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    <tr
-                      v-for="task in sortedFilteredTasks"
-                      :key="task.id"
-                      :class="getTaskAssignedMembers(task.id).length > 0 ? 'bg-teal-50/80 dark:bg-teal-950/30 ring-1 ring-inset ring-teal-200 dark:ring-teal-800' : 'hover:bg-slate-50/80 dark:hover:bg-slate-700/40'"
-                      class="transition"
-                    >
-                      
-                      <td class="py-3 px-2 text-center font-mono font-bold text-slate-400">
-                        {{ getTaskSequenceNo(task) }}
-                      </td>
-
-                      <td class="py-3 px-2 text-center">
-                        <button 
-                          @click="toggleTaskHeavy(task)"
-                          :class="[
-                            task.isHeavy 
-                              ? 'text-amber-500 bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700 scale-110 shadow-sm opacity-100' 
-                              : 'text-slate-300 hover:text-slate-400 dark:text-slate-600 opacity-40 hover:opacity-80'
-                          ]"
-                          class="w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-sm transition"
-                          :title="task.isHeavy ? '取消辛苦標記' : '標記為「辛苦的工作 🔨 (看板置頂且最後抽)」'"
-                        >
-                          🔨
-                        </button>
-                      </td>
-
-                      <td class="py-3 px-2">
-                        <span :class="getCategoryBadgeClass(task.category)" class="font-bold text-[11px] px-2 py-0.5 rounded border">
-                          {{ task.category || '教室' }}
-                        </span>
-                      </td>
-
-                      <td class="py-3 px-2">
-                        <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center flex-wrap gap-2">
-                          <span class="text-base">{{ task.icon || '🧹' }}</span>
-                          <span>{{ task.name }}</span>
-                          <span v-if="task.isHeavy" class="text-amber-500 text-[10px] font-bold bg-amber-50 dark:bg-amber-950 border border-amber-200 px-1 py-0.2 rounded">辛苦</span>
-                          <span v-if="getTaskAssignedMembers(task.id).length > 0" class="text-teal-700 dark:text-teal-300 text-[10px] font-bold bg-teal-100 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 px-1.5 py-0.5 rounded">
-                            已指派 {{ getTaskAssignedMembers(task.id).length }} 人
-                          </span>
-                          
-                          <span v-if="task.description" class="text-xs font-normal text-slate-400 dark:text-slate-400 ml-2 border-l border-slate-200 dark:border-slate-700 pl-2">
-                            {{ task.description }}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td class="py-3 px-2 text-center">
-                        <div class="flex items-center justify-center gap-1.5">
-                          <button @click="updateTaskCount(task, -1)" class="w-5 h-5 rounded bg-slate-100 dark:bg-slate-700 border text-slate-600 dark:text-slate-200 font-bold text-xs flex items-center justify-center">-</button>
-                          <span class="font-black text-slate-800 dark:text-slate-100 text-xs w-8 text-center">{{ task.count }}人</span>
-                          <button @click="updateTaskCount(task, 1)" class="w-5 h-5 rounded bg-slate-100 dark:bg-slate-700 border text-slate-600 dark:text-slate-200 font-bold text-xs flex items-center justify-center">+</button>
-                        </div>
-                      </td>
-
-                      <td class="py-3 px-2 text-right">
-                        <div class="flex items-center justify-end gap-1">
-                          <button 
-                            @click="openEditTaskModal(task)" 
-                            class="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-slate-700 p-1.5 rounded-lg transition" 
-                            title="編輯工作"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            @click="openTaskAssignModal(task)" 
-                            class="text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-slate-700 p-1.5 rounded-lg transition" 
-                            title="指派人員"
-                          >
-                            👤
-                          </button>
-                          <button 
-                            @click="removeTask(task.id)" 
-                            class="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 p-1.5 rounded-lg transition" 
-                            title="刪除工作"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div v-else class="text-center py-12 text-slate-400 text-sm">
-                當前分類 ({{ selectedCategory }}) 尚無工作項目。
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ================= 頁籤 4: 掃地工作歷史記錄 ================= -->
-      <div v-show="currentTab === 'history'" class="space-y-6">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">📜 掃地工作歷史記錄</h2>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center text-xs">
-              <span class="text-slate-400 px-2 font-semibold">排序：</span>
-              <button
-                @click="historySortMode = 'SEQUENCE'"
-                :class="[historySortMode === 'SEQUENCE' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
-                class="px-2.5 py-1 rounded-lg transition"
-              >
-                🔢 依序號
-              </button>
-              <button
-                @click="historySortMode = 'CATEGORY'" 
-                :class="[historySortMode === 'CATEGORY' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
-                class="px-2.5 py-1 rounded-lg transition"
-              >
-                🏷️ 依類別
-              </button>
-              <button
-                @click="historySortMode = 'SEAT'"
-                :class="[historySortMode === 'SEAT' ? 'bg-teal-600 text-white font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700']"
-                class="px-2.5 py-1 rounded-lg transition"
-              >
-                🔢 依座號
-              </button>
-            </div>
-
-            <button 
-              v-if="historyLogs.length > 0"
-              @click="clearHistory" 
-              class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition"
-            >
-              🗑️ 清空歷史
-            </button>
           </div>
         </div>
 
-        <div v-if="historyLogs.length > 0" class="space-y-3">
-          <div 
-            v-for="(log, index) in historyLogs" 
-            :key="log.id || index"
-            class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition"
-          >
-            <div 
-              @click="toggleHistoryExpand(log.id)"
-              class="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center justify-between select-none"
-            >
-              <div class="flex items-center gap-3">
-                <span class="bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold text-xs px-3 py-1 rounded-full">
-                  紀錄 #{{ historyLogs.length - index }}
-                </span>
-                <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ log.timestamp }}</span>
-                <span class="text-xs text-slate-400 hidden sm:inline">共 {{ log.totalPresent }} 人參與抽籤</span>
+        <!-- ================= 頁籤 4: 掃地工作歷史記錄 ================= -->
+        <div v-show="currentTab === 'history'" class="page">
+          <div class="page-head">
+            <div><h1 class="page-title">掃地工作歷史記錄</h1></div>
+            <div class="history-tools">
+              <div class="seg" role="group" aria-label="排序">
+                <span class="seg-label">排序</span>
+                <button type="button" :aria-pressed="String(historySortMode === 'SEQUENCE')" @click="historySortMode = 'SEQUENCE'">🔢 依序號</button>
+                <button type="button" :aria-pressed="String(historySortMode === 'CATEGORY')" @click="historySortMode = 'CATEGORY'">🏷️ 依類別</button>
+                <button type="button" :aria-pressed="String(historySortMode === 'SEAT')" @click="historySortMode = 'SEAT'">🔢 依座號</button>
               </div>
-
-              <div class="flex items-center gap-2 text-xs font-bold text-teal-600 dark:text-teal-400">
-                <span>{{ isHistoryExpanded(log.id) ? '收合詳情 🔼' : '點擊展開詳情 🔽' }}</span>
-              </div>
+              <button v-if="historyLogs.length > 0" type="button" class="btn btn-sm btn-danger" @click="clearHistory">🗑️ 清空歷史</button>
             </div>
+          </div>
 
-            <div v-show="isHistoryExpanded(log.id)" class="p-6 border-t border-slate-100 dark:border-slate-700 space-y-4 bg-slate-50/50 dark:bg-slate-900/30">
-              <div class="flex flex-wrap gap-2">
-                <button @click.stop="downloadResultImage(log)" class="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">🖼️ 匯出 PNG</button>
-                <button @click.stop="exportPDF(log)" class="bg-[#E1251B] hover:bg-[#c91d14] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📄 匯出 PDF</button>
-                <button @click.stop="exportWord(log)" class="bg-[#185ABD] hover:bg-[#13499b] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📝 匯出 Word</button>
-                <button @click.stop="exportExcel(log)" class="bg-[#107C41] hover:bg-[#0e6b37] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition">📊 匯出 Excel</button>
-                <button @click.stop="deleteHistoryLog(log.id)" class="bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl text-xs font-semibold transition">🗑️ 刪除</button>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                <div 
-                  v-for="res in getSortedHistoryResults(log.results)" 
-                  :key="res.taskId"
-                  class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
-                >
-                  <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-                    <span class="flex items-center gap-1">
-                      <span>{{ res.taskIcon || '🧹' }}</span>
-                      <span>{{ res.taskName }}</span>
-                      <span v-if="res.isHeavy" title="辛苦的工作" class="text-amber-500 font-bold">🔨</span>
-                    </span>
-                    <span :class="getCategoryBadgeClass(res.category)" class="text-[10px] font-bold px-1.5 py-0.2 rounded border">
-                      {{ res.category || '教室' }}
-                    </span>
+          <div v-if="historyLogs.length > 0" class="hlist">
+            <article v-for="(log, index) in historyLogs" :key="log.id || index" class="hitem">
+              <button type="button" class="hhead" @click="toggleHistoryExpand(log.id)" :aria-expanded="String(isHistoryExpanded(log.id))">
+                <span class="chip chip-ok">紀錄 #{{ historyLogs.length - index }}</span>
+                <span class="h-time">{{ log.timestamp }}</span>
+                <span class="h-sub">共 {{ log.totalPresent }} 人參與抽籤</span>
+                <span class="h-toggle">{{ isHistoryExpanded(log.id) ? '收合詳情 🔼' : '展開詳情 🔽' }}</span>
+              </button>
+
+              <div v-show="isHistoryExpanded(log.id)" class="hbody">
+                <div class="btn-row">
+                  <button type="button" class="btn btn-sm xbtn-inline" @click.stop="downloadResultImage(log)">🖼️ 匯出 PNG<i class="brand-dot" style="--brand: #0284c7"></i></button>
+                  <button type="button" class="btn btn-sm xbtn-inline" @click.stop="exportPDF(log)">📄 匯出 PDF<i class="brand-dot" style="--brand: #E1251B"></i></button>
+                  <button type="button" class="btn btn-sm xbtn-inline" @click.stop="exportWord(log)">📝 匯出 Word<i class="brand-dot" style="--brand: #185ABD"></i></button>
+                  <button type="button" class="btn btn-sm xbtn-inline" @click.stop="exportExcel(log)">📊 匯出 Excel<i class="brand-dot" style="--brand: #107C41"></i></button>
+                  <button type="button" class="btn btn-sm btn-danger" @click.stop="deleteHistoryLog(log.id)">🗑️ 刪除</button>
+                </div>
+
+                <div class="hgrid">
+                  <div v-for="res in getSortedHistoryResults(log.results)" :key="res.taskId" class="hres" :data-cat="catId(res.category)">
+                    <div class="hres-head">
+                      <span><span aria-hidden="true">{{ res.taskIcon || '🧹' }}</span><span>{{ res.taskName }}</span><span v-if="res.isHeavy" title="辛苦的工作">🔨</span></span>
+                      <span class="badge">{{ res.category || '教室' }}</span>
+                    </div>
+                    <div class="slots">
+                      <span v-for="m in getSortedHistoryMembers(res.assignedMembers)" :key="m.id" class="tag tag-plain">
+                        <b v-if="m.seatNo">{{ String(m.seatNo).padStart(2, '0') }}</b>
+                        <span>{{ m.name }}</span>
+                      </span>
+                    </div>
                   </div>
-                  
-                  <div class="flex flex-wrap gap-1 pt-1">
-                    <span 
-                      v-for="m in getSortedHistoryMembers(res.assignedMembers)" 
-                      :key="m.id"
-                      class="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600"
-                    >
-                      {{ m.seatNo ? m.seatNo + '號 ' : '' }}{{ m.name }}
+                </div>
+
+                <div v-if="log.exemptMembers && log.exemptMembers.length > 0" class="exempt" style="background: var(--surface)">
+                  <div class="exempt-title">✨ 當次免掃地成員（按座號排序）</div>
+                  <div class="exempt-list">
+                    <span v-for="m in getSortedHistoryMembers(log.exemptMembers)" :key="m.id" class="tag tag-plain">
+                      <b v-if="m.seatNo">{{ String(m.seatNo).padStart(2, '0') }}</b>
+                      <span>✨ {{ m.name }}</span>
                     </span>
                   </div>
                 </div>
               </div>
+            </article>
+          </div>
 
-              <div v-if="log.exemptMembers && log.exemptMembers.length > 0" class="pt-2">
-                <div class="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-1.5">
-                  ✨ 當次免掃地成員 (按座號排序)：
-                </div>
-                <div class="flex flex-wrap gap-1.5">
-                  <span 
-                    v-for="m in getSortedHistoryMembers(log.exemptMembers)" 
-                    :key="m.id"
-                    class="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800 font-semibold"
-                  >
-                    ✨ {{ m.seatNo ? m.seatNo + '號 ' : '' }}{{ m.name }}
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div v-else class="card empty-state">
+            <div class="big">📜</div>
+            <p>尚無掃地工作歷史記錄</p>
           </div>
         </div>
 
-        <div v-else class="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-700 text-slate-400 space-y-2">
-          <div class="text-4xl">📜</div>
-          <p class="text-sm">尚無掃地工作歷史記錄</p>
-        </div>
-      </div>
+        <!-- ================= 頁籤 5: 系統設定 ================= -->
+        <div v-show="currentTab === 'settings'" class="page">
+          <div class="page-head"><div><h1 class="page-title">系統設定</h1></div></div>
 
-      <!-- ================= 頁籤 5: 系統設定 ================= -->
-      <div v-show="currentTab === 'settings'" class="space-y-6 max-w-4xl mx-auto">
-        <div class="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
-          <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <span>⚙️ 系統設定</span>
-          </h2>
+          <div class="card set-card" style="max-width: 880px; width: 100%">
 
-          <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🎲 抽籤偏好設定</h3>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" v-model="avoidRepeat" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
-                  <div>
-                    <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⚡ 不重複模式</span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">優先讓工作不與所選的那次掃地工作重複。</span>
+            <div class="set-sec">
+              <h2 class="set-title">🎨 外觀</h2>
+              <div class="seg seg-full" role="group" aria-label="外觀">
+                <button type="button" :aria-pressed="String(themeMode === 'system')" @click="setThemeMode('system')">跟隨系統</button>
+                <button type="button" :aria-pressed="String(themeMode === 'light')" @click="setThemeMode('light')">☀️ 淺色</button>
+                <button type="button" :aria-pressed="String(themeMode === 'dark')" @click="setThemeMode('dark')">🌙 深色</button>
+              </div>
+              <p class="set-note">只記在這台裝置的瀏覽器，不會寫進備份檔。</p>
+            </div>
+
+            <div class="set-sec">
+              <h2 class="set-title">🎲 抽籤偏好設定</h2>
+              <div class="opt-grid">
+                <div class="opt opt-stack">
+                  <label class="opt-row">
+                    <span class="opt-text"><span class="opt-title">⚡ 不重複模式</span><span class="opt-desc">優先讓工作不與所選的那次掃地工作重複。</span></span>
+                    <input type="checkbox" class="switch" v-model="avoidRepeat">
+                  </label>
+                  <div class="field">
+                    <label class="label" for="s-avoid-log">不與哪一次重複</label>
+                    <select id="s-avoid-log" class="select" v-model="avoidRepeatLogId" :disabled="!avoidRepeat">
+                      <option value="latest">最近一次（預設）{{ historyLogs.length > 0 ? '：' + (historyLogs[0].timestamp || '未記錄時間') : '（尚無歷史紀錄）' }}</option>
+                      <option v-for="opt in avoidRepeatLogOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+                    </select>
                   </div>
+                </div>
+
+                <label class="opt">
+                  <span class="opt-text"><span class="opt-title">🛡️ 不悲情模式</span><span class="opt-desc">不再悲情抽到爛工作。</span></span>
+                  <input type="checkbox" class="switch" v-model="avoidSadness">
                 </label>
-                <div class="space-y-1">
-                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-300 block">不與哪一次重複</span>
-                  <select
-                    v-model="avoidRepeatLogId"
-                    :disabled="!avoidRepeat"
-                    class="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-50"
-                  >
-                    <option value="latest">最近一次（預設）{{ historyLogs.length > 0 ? '：' + (historyLogs[0].timestamp || '未記錄時間') : '（尚無歷史紀錄）' }}</option>
-                    <option v-for="opt in avoidRepeatLogOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+
+                <label class="opt">
+                  <span class="opt-text"><span class="opt-title">🌀 大風吹模式</span><span class="opt-desc">讓公區、值日生、教室等大分類工作的人員不與上次重複。</span></span>
+                  <input type="checkbox" class="switch" v-model="bigBlowMode">
+                </label>
+
+                <label class="opt">
+                  <span class="opt-text"><span class="opt-title">🎉 抽籤完畢慶祝彩帶</span><span class="opt-desc">抽籤完成時發射爆發彩帶動畫。</span></span>
+                  <input type="checkbox" class="switch" v-model="enableConfetti">
+                </label>
+
+                <div class="opt opt-stack">
+                  <label class="opt-title" for="s-anim">🎰 抽籤動畫效果自訂</label>
+                  <select id="s-anim" class="select" v-model="drawAnimationType">
+                    <option value="shuffle">🎰 拉霸機姓名高速滾動</option>
+                    <option value="flip">🎴 卡片翻牌揭曉</option>
+                    <option value="glow">✨ 霓虹光芒閃爍揭曉</option>
+                    <option value="bounce">🎈 開心彈跳登場</option>
+                    <option value="dice">🎲 幸運骰子旋轉揭曉</option>
+                    <option value="none">⚡ 無動畫（極速即時揭曉）</option>
                   </select>
                 </div>
-              </div>
 
-              <label class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer transition">
-                <input type="checkbox" v-model="avoidSadness" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
-                <div>
-                  <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">🛡️ 不悲情模式</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">不再悲情抽到爛工作。</span>
-                </div>
-              </label>
-
-              <label class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer transition">
-                <input type="checkbox" v-model="bigBlowMode" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
-                <div>
-                  <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">🌀 大風吹模式</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">讓公區、值日生、教室等大分類工作的人員不與上次重複。</span>
-                </div>
-              </label>
-
-              <label class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 cursor-pointer transition">
-                <input type="checkbox" v-model="enableConfetti" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 mt-0.5">
-                <div>
-                  <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">🎉 抽籤完畢慶祝彩帶</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">抽籤完成時發射爆發彩帶動畫。</span>
-                </div>
-              </label>
-
-              <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">🎰 抽籤動畫效果自訂</span>
-                <select v-model="drawAnimationType" class="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <option value="shuffle">🎰 拉霸機姓名高速滾動</option>
-                  <option value="flip">🎴 卡片翻牌揭曉</option>
-                  <option value="glow">✨ 霓虹光芒閃爍揭曉</option>
-                  <option value="bounce">🎈 開心彈跳登場</option>
-                  <option value="dice">🎲 幸運骰子旋轉揭曉</option>
-                  <option value="none">⚡ 無動畫 (極速即時揭曉)</option>
-                </select>
-              </div>
-
-              <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                <span class="font-bold text-sm text-slate-800 dark:text-slate-100 block">⏱️ 全體總抽籤時長</span>
-                <div class="grid grid-cols-3 gap-1.5">
-                  <button 
-                    v-for="d in [6, 12, 18]" 
-                    :key="d"
-                    @click="drawDuration = d"
-                    :class="[drawDuration === d ? 'bg-teal-600 text-white font-bold' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200']"
-                    class="py-1.5 rounded-lg text-xs transition"
-                  >
-                    {{ d === 6 ? '短 6秒' : d === 12 ? '中 12秒' : '長 18秒' }}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- 工作類別設定 -->
-          <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🏷️ 工作類別設定</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                v-for="cat in categorySettings"
-                :key="cat.id"
-                class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3"
-              >
-                <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
-                  <span class="flex items-center gap-2 font-bold text-sm text-slate-800 dark:text-slate-100">
-                    <input
-                      type="checkbox"
-                      v-model="cat.visible"
-                      @change="ensureSelectedCategory"
-                      class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4"
-                    >
-                    <span>{{ cat.icon }}</span>
-                    <span>顯示此類別</span>
-                  </span>
-                  <span
-                    :class="cat.visible ? 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'"
-                    class="text-[11px] font-bold px-2 py-0.5 rounded-full border"
-                  >
-                    {{ cat.visible ? '已顯示' : '已隱藏' }}
-                  </span>
-                </label>
-                <input
-                  :value="cat.name"
-                  @change="renameCategory(cat, $event.target.value); $event.target.value = cat.name"
-                  type="text"
-                  class="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                <div class="space-y-2">
-                  <button
-                    type="button"
-                    @click="toggleCategoryIconPicker(cat.id)"
-                    class="w-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between transition"
-                  >
-                    <span>選擇圖示</span>
-                    <span class="text-lg">{{ cat.icon }}</span>
-                  </button>
-                  <div
-                    v-if="categoryIconPickerId === cat.id"
-                    class="grid grid-cols-8 gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2"
-                  >
-                    <button
-                      v-for="icon in categoryIconOptions"
-                      :key="cat.id + '-' + icon"
-                      type="button"
-                      @click="selectCategoryIcon(cat, icon)"
-                      :class="cat.icon === icon ? 'bg-teal-600 text-white ring-2 ring-teal-300' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'"
-                      class="w-8 h-8 rounded-lg text-base flex items-center justify-center transition"
-                    >
-                      {{ icon }}
-                    </button>
+                <div class="opt opt-stack">
+                  <span class="opt-title">⏱️ 全體總抽籤時長</span>
+                  <div class="seg seg-full" role="group" aria-label="全體總抽籤時長">
+                    <button v-for="d in [6, 12, 18]" :key="d" type="button" :aria-pressed="String(drawDuration === d)" @click="drawDuration = d">{{ d === 6 ? '短 6 秒' : d === 12 ? '中 12 秒' : '長 18 秒' }}</button>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 匯出設定 -->
-          <div class="space-y-4 border-b border-slate-100 dark:border-slate-700 pb-6">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🛠️ 匯出設定</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">LINE 文字、PNG、PDF、Excel、Word 匯出時的工作排序方式。</p>
+            <div class="set-sec">
+              <h2 class="set-title">🏷️ 工作類別設定</h2>
+              <div class="opt-grid">
+                <div v-for="cat in categorySettings" :key="cat.id" class="opt opt-stack">
+                  <label class="opt-row">
+                    <span class="opt-text"><span class="opt-title">{{ cat.icon }} 顯示此類別</span></span>
+                    <span class="chip" :class="cat.visible ? 'chip-ok' : ''">{{ cat.visible ? '已顯示' : '已隱藏' }}</span>
+                    <input type="checkbox" class="switch" v-model="cat.visible" @change="ensureSelectedCategory">
+                  </label>
+                  <input :value="cat.name" @change="renameCategory(cat, $event.target.value); $event.target.value = cat.name" type="text" class="input" :aria-label="'類別名稱：' + cat.name">
+                  <button type="button" class="btn btn-between" @click="toggleCategoryIconPicker(cat.id)">
+                    <span>選擇圖示</span><span style="font-size: 20px">{{ cat.icon }}</span>
+                  </button>
+                  <div v-if="categoryIconPickerId === cat.id" class="picker">
+                    <button v-for="icon in categoryIconOptions" :key="cat.id + '-' + icon" type="button" :aria-pressed="String(cat.icon === icon)" @click="selectCategoryIcon(cat, icon)" :aria-label="'圖示 ' + icon">{{ icon }}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <div class="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <span class="font-bold text-xs text-slate-700 dark:text-slate-200 block">匯出時的排序</span>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <label
-                  v-for="option in exportSortOptions"
-                  :key="option.value"
-                  :class="exportSortMode === option.value ? 'bg-teal-600 text-white border-teal-700 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'"
-                  class="flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer text-xs font-bold transition"
-                >
-                  <input type="radio" v-model="exportSortMode" :value="option.value" class="text-teal-600 focus:ring-teal-500">
+            <div class="set-sec">
+              <h2 class="set-title">🛠️ 匯出設定</h2>
+              <p class="set-note">LINE 文字、PNG、PDF、Excel、Word 匯出時的工作排序方式。</p>
+              <div class="seg seg-full" role="radiogroup" aria-label="匯出時的排序">
+                <label v-for="option in exportSortOptions" :key="option.value" :class="{ 'is-on': exportSortMode === option.value }">
+                  <input type="radio" v-model="exportSortMode" :value="option.value">
                   <span>{{ option.label }}</span>
                 </label>
               </div>
             </div>
-            
-          </div>
 
-          <!-- 資料備份與還原 -->
-          <div class="space-y-4">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">💾 資料備份與還原</h3>
-            <div class="flex flex-wrap gap-3">
-              <button @click="exportBackup" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition">
-                📥 下載 JSON 備份檔案
-              </button>
-              <label class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition cursor-pointer">
-                📤 匯入 JSON 備份檔案
-                <input type="file" accept=".json" @change="importBackup" class="hidden">
-              </label>
-            </div>
-          </div>
-
-          <!-- 系統維護 -->
-          <div class="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-700">
-            <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">🔄 系統維護</h3>
-            <div class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p class="font-bold text-sm text-slate-800 dark:text-slate-100">恢復預設</p>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">恢復範例名單、預設掃地工作與抽籤偏好設定。</p>
+            <div class="set-sec">
+              <h2 class="set-title">💾 資料備份與還原</h2>
+              <div class="btn-row">
+                <button type="button" class="btn btn-primary" @click="exportBackup">📥 下載 JSON 備份檔案</button>
+                <label class="btn btn-label">
+                  📤 匯入 JSON 備份檔案
+                  <input type="file" accept=".json" @change="importBackup" class="hidden">
+                </label>
               </div>
-              <button @click="restoreDefaultData" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5 flex-shrink-0">
-                <span>🔄</span>
-                <span>恢復預設</span>
-              </button>
+            </div>
+
+            <div class="set-sec">
+              <h2 class="set-title">🔄 系統維護</h2>
+              <div class="maint">
+                <div class="opt-text"><span class="opt-title">恢復預設</span><span class="opt-desc">恢復範例名單、預設掃地工作與抽籤偏好設定。</span></div>
+                <button type="button" class="btn btn-accent" @click="restoreDefaultData">🔄 恢復預設</button>
+              </div>
+              <div class="maint maint-danger">
+                <div class="opt-text"><span class="opt-title">全部重設</span><span class="opt-desc">清空所有成員、掃地工作、抽籤結果、免掃地名單與歷史紀錄，無法復原。</span></div>
+                <button type="button" class="btn btn-danger" @click="resetAllData" title="清空全站資料">☢️ 全部重設</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-    </main>
+      </main>
 
-    <!-- 手動指派工作模態彈窗 -->
-    <div v-if="manualAssignModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-            <span>🧹 指派掃地工作</span>
-          </h3>
-          <button @click="closeAssignModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      <!-- 頁尾 -->
+      <footer class="app-footer">
+        <p>🧹 掃地工作小幫手</p>
+        <p>資料完全儲存在您的本機瀏覽器，重視您的個人隱私與資訊安全。</p>
+        <p class="copyright-note" aria-label="著作權與授權資訊"><small>© 2026 derliang｜保留所有權利｜限非營利使用｜<a href="https://github.com/derliang/cleaning-helper/blob/main/LICENSE.md" target="_blank" rel="noopener">授權說明</a></small></p>
+      </footer>
+
+      <!-- 手機底部頁籤 -->
+      <nav class="tabbar" aria-label="主要頁面">
+        <button v-for="tab in tabs" :key="tab.id" type="button" class="tab" :aria-current="currentTab === tab.id ? 'page' : null" @click="currentTab = tab.id">
+          <span class="tab-ico" aria-hidden="true">{{ tab.icon }}</span>{{ tab.short }}
+        </button>
+      </nav>
+    </div>
+
+    <!-- 手動指派工作彈窗 -->
+    <div v-if="manualAssignModal.isOpen" class="scrim">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-assign">
+        <div class="modal-head">
+          <h3 id="dlg-assign" class="modal-title">🧹 指派掃地工作</h3>
+          <button type="button" class="btn btn-ghost btn-icon" @click="closeAssignModal" aria-label="關閉">✕</button>
         </div>
-
-        <div class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          指派成員：<span class="text-teal-600 dark:text-teal-400 font-bold">{{ manualAssignModal.member?.seatNo ? manualAssignModal.member.seatNo + '號 ' : '' }}{{ manualAssignModal.member?.name }}</span>
+        <div class="modal-sub">
+          <span>指派成員：<span style="color: var(--primary-ink)">{{ manualAssignModal.member?.seatNo ? manualAssignModal.member.seatNo + '號 ' : '' }}{{ manualAssignModal.member?.name }}</span></span>
         </div>
-
-        <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-          <button 
-            @click="assignTaskToMember(null)"
-            :class="[!manualAssignModal.member?.assignedTaskId ? 'bg-slate-200 dark:bg-slate-700 font-bold' : 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100']"
-            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border border-slate-200 dark:border-slate-700"
-          >
-            <span>🚫 清除指定 (恢復參與隨機抽籤)</span>
+        <div class="modal-list">
+          <button type="button" class="pickrow" :aria-pressed="String(!manualAssignModal.member?.assignedTaskId)" @click="assignTaskToMember(null)">
+            <span>🚫 清除指定（恢復參與隨機抽籤）</span>
           </button>
-
-          <button 
-            v-for="task in activeTasks" 
+          <button
+            v-for="task in activeTasks"
             :key="task.id"
-            @click="assignTaskToMember(task.id)"
+            type="button"
+            class="pickrow"
+            :aria-pressed="String(manualAssignModal.member?.assignedTaskId === task.id)"
             :disabled="isTaskFull(task.id)"
-            :class="[
-              isTaskFull(task.id)
-                ? 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed grayscale'
-                : manualAssignModal.member?.assignedTaskId === task.id
-                  ? 'bg-teal-600 text-white font-bold'
-                  : 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-            ]"
-            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border"
+            @click="assignTaskToMember(task.id)"
           >
-            <span class="flex items-center gap-1.5">
-              <span>{{ task.icon || '🧹' }}</span>
-              <span>{{ task.name }}</span>
-              <span v-if="task.isHeavy" class="text-amber-500">🔨</span>
-            </span>
-            <span class="text-[10px] opacity-80">
-              {{ isTaskFull(task.id) ? `已滿 ${getTaskAssignedMembers(task.id).length}/${task.count}` : `需求 ${task.count} 人` }}
-            </span>
+            <span><span aria-hidden="true">{{ task.icon || '🧹' }}</span><span>{{ task.name }}</span><span v-if="task.isHeavy">🔨</span></span>
+            <small>{{ isTaskFull(task.id) ? `已滿 ${getTaskAssignedMembers(task.id).length}/${task.count}` : `需求 ${task.count} 人` }}</small>
           </button>
         </div>
       </div>
     </div>
 
     <!-- 工作項目指派人員彈窗 -->
-    <div v-if="taskAssignModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-            <span>👤 指派人員</span>
-          </h3>
-          <button @click="closeTaskAssignModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+    <div v-if="taskAssignModal.isOpen" class="scrim">
+      <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="dlg-people">
+        <div class="modal-head">
+          <h3 id="dlg-people" class="modal-title">👤 指派人員</h3>
+          <button type="button" class="btn btn-ghost btn-icon" @click="closeTaskAssignModal" aria-label="關閉">✕</button>
         </div>
-
-        <div v-if="taskAssignModal.task" class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-3">
-          <span class="min-w-0 truncate">
-            {{ taskAssignModal.task.icon || '🧹' }} {{ taskAssignModal.task.name }}
-          </span>
-          <span class="text-xs bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-800 rounded-full px-2.5 py-1 flex-shrink-0">
-            已指派 {{ getTaskAssignedMembers(taskAssignModal.task.id).length }} / {{ taskAssignModal.task.count }} 人
-          </span>
+        <div v-if="taskAssignModal.task" class="modal-sub">
+          <span>{{ taskAssignModal.task.icon || '🧹' }} {{ taskAssignModal.task.name }}</span>
+          <span class="chip chip-ok">已指派 {{ getTaskAssignedMembers(taskAssignModal.task.id).length }} / {{ taskAssignModal.task.count }} 人</span>
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
+        <div class="pick-grid">
           <button
             v-for="member in presentMembers"
             :key="member.id"
-            @click="toggleMemberTaskAssignment(member, taskAssignModal.task.id)"
+            type="button"
+            class="pickrow"
+            :aria-pressed="String(member.assignedTaskId === taskAssignModal.task.id)"
             :disabled="isTaskFull(taskAssignModal.task.id) && member.assignedTaskId !== taskAssignModal.task.id"
-            :class="[
-              member.assignedTaskId === taskAssignModal.task.id
-                ? 'bg-teal-600 text-white border-teal-700 font-bold'
-                : isTaskFull(taskAssignModal.task.id)
-                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed'
-                : member.assignedTaskId
-                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-            ]"
-            class="w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between border min-w-0"
+            @click="toggleMemberTaskAssignment(member, taskAssignModal.task.id)"
           >
-            <span class="flex items-center gap-2 min-w-0">
-              <span class="font-mono bg-white/20 px-1.5 py-0.5 rounded">#{{ member.seatNo || '-' }}</span>
-              <span class="truncate">{{ member.name }}</span>
-            </span>
-            <span class="text-[10px] opacity-80 flex-shrink-0">
-              {{ member.assignedTaskId === taskAssignModal.task.id ? '已指派' : member.assignedTaskId ? getAssignedTaskName(member.assignedTaskId) : '可指派' }}
-            </span>
+            <span><span class="seat">#{{ member.seatNo || '-' }}</span><span>{{ member.name }}</span></span>
+            <small>{{ member.assignedTaskId === taskAssignModal.task.id ? '已指派' : member.assignedTaskId ? getAssignedTaskName(member.assignedTaskId) : '可指派' }}</small>
           </button>
         </div>
       </div>
     </div>
 
     <!-- 編輯工作彈窗 -->
-    <div v-if="taskEditModal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
-            <span>✏️ 編輯掃地工作項目</span>
-          </h3>
-          <button @click="closeEditTaskModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+    <div v-if="taskEditModal.isOpen" class="scrim">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-edit">
+        <div class="modal-head">
+          <h3 id="dlg-edit" class="modal-title">✏️ 編輯掃地工作項目</h3>
+          <button type="button" class="btn btn-ghost btn-icon" @click="closeEditTaskModal" aria-label="關閉">✕</button>
         </div>
 
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作分類</label>
-            <div v-if="categories.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              <button 
-                v-for="cat in categories" 
-                :key="cat"
-                type="button"
-                @click="taskEditModal.form.category = cat"
-                :class="[
-                  taskEditModal.form.category === cat ? getCategoryActiveClass(cat) : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                ]"
-                class="py-1.5 rounded-lg text-xs transition text-center font-bold"
-              >
-                {{ cat }}
-              </button>
+        <div class="modal-body">
+          <div class="field">
+            <span class="label">工作分類</span>
+            <div v-if="categories.length > 0" class="pick">
+              <button v-for="cat in categories" :key="cat" type="button" :data-cat="catId(cat)" :aria-pressed="String(taskEditModal.form.category === cat)" @click="taskEditModal.form.category = cat">{{ cat }}</button>
             </div>
-            <p v-else class="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
-              請先到系統設定勾選至少一個工作類別。
-            </p>
+            <p v-else class="hint">請先到系統設定勾選至少一個工作類別。</p>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">工作名稱</label>
-            <div class="flex gap-2">
-              <div class="relative">
-                <button
-                  type="button"
-                  @click="toggleTaskIconPicker"
-                  class="w-14 h-full min-h-[42px] bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-base focus:ring-2 focus:ring-teal-500 focus:outline-none transition"
-                  title="選擇工作圖示"
-                >
-                  {{ taskEditModal.form.icon || '🧹' }}
-                </button>
-              </div>
-              <input 
-                type="text" 
-                v-model="taskEditModal.form.name" 
-                class="flex-grow p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              >
+          <div class="field">
+            <label class="label" for="e-name">工作名稱</label>
+            <div class="input-row">
+              <button type="button" class="btn btn-icon-pick" @click="toggleTaskIconPicker" title="選擇工作圖示" aria-label="選擇工作圖示">{{ taskEditModal.form.icon || '🧹' }}</button>
+              <input id="e-name" type="text" class="input" v-model="taskEditModal.form.name">
             </div>
-
-            <div v-if="isTaskIconPickerOpen" class="mt-2 p-2 bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 rounded-2xl">
-              <div class="flex flex-wrap gap-1.5">
-                <button
-                  v-for="icon in presetIcons"
-                  :key="'edit-icon-' + icon"
-                  type="button"
-                  @click="selectTaskEditIcon(icon)"
-                  :class="taskEditModal.form.icon === icon ? 'bg-teal-100 dark:bg-teal-950 border-teal-400 ring-2 ring-teal-200' : 'bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'"
-                  class="w-8 h-8 rounded-lg text-sm flex items-center justify-center border transition"
-                >
-                  {{ icon }}
-                </button>
+            <div v-if="isTaskIconPickerOpen" class="icon-pick">
+              <div class="icon-grid">
+                <button v-for="icon in presetIcons" :key="'edit-icon-' + icon" type="button" :aria-pressed="String(taskEditModal.form.icon === icon)" @click="selectTaskEditIcon(icon)" :aria-label="'選用圖示 ' + icon" :style="taskEditModal.form.icon === icon ? 'border-color: var(--primary); background: var(--primary-soft)' : ''">{{ icon }}</button>
               </div>
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">需求人數</label>
-            <input 
-              type="number" 
-              v-model.number="taskEditModal.form.count" 
-              min="1" 
-              max="50"
-              class="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-            >
+          <div class="field">
+            <label class="label" for="e-count">需求人數</label>
+            <input id="e-count" type="number" class="input" v-model.number="taskEditModal.form.count" min="1" max="50">
           </div>
 
-          <div class="pt-1">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" v-model="taskEditModal.form.isHeavy" class="rounded text-amber-500 focus:ring-amber-400 w-4 h-4">
-              <span class="text-xs font-bold flex items-center gap-1" :class="[taskEditModal.form.isHeavy ? 'text-amber-600' : 'text-slate-500']">
-                <span>🔨</span> 標記為「辛苦的工作」
-              </span>
-            </label>
+          <label class="check-row"><input type="checkbox" v-model="taskEditModal.form.isHeavy"><span>🔨 標記為「辛苦的工作」</span></label>
+
+          <div class="field">
+            <label class="label" for="e-desc">說明／注意事項（可選）</label>
+            <input id="e-desc" type="text" class="input" v-model="taskEditModal.form.description">
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">說明 / 注意事項 (可選)</label>
-            <input 
-              type="text" 
-              v-model="taskEditModal.form.description" 
-              class="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-            >
-          </div>
-
-          <div class="flex gap-2 pt-2">
-            <button @click="closeEditTaskModal" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition">
-              取消
-            </button>
-            <button @click="saveEditTask" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow transition">
-              儲存變更
-            </button>
+          <div class="modal-actions">
+            <button type="button" class="btn" @click="closeEditTaskModal">取消</button>
+            <button type="button" class="btn btn-primary" @click="saveEditTask">儲存變更</button>
           </div>
         </div>
       </div>
@@ -1514,44 +1355,54 @@ Authorization inquiries: derliang@gmail.com
 
       </div>
     </div>
-
-    <!-- 頁尾 Footer -->
-    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-400 transition-colors mt-auto">
-      <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <p>🧹 掃地工作小幫手</p>
-        <p>資料完全儲存在您的本機瀏覽器，重視您的個人隱私與資訊安全。</p>
-      </div>
-      <p class="copyright-note max-w-7xl mx-auto px-4 mt-2 text-[11px] leading-normal" aria-label="著作權與授權資訊"><small>© 2026 derliang｜保留所有權利｜限非營利使用｜<a class="underline" href="https://github.com/derliang/cleaning-helper/blob/main/LICENSE.md" target="_blank" rel="noopener">授權說明</a></small></p>
-    </footer>
   </div>
 
-  <!-- Vue 3 應用程式邏輯 -->
+          <!-- Vue 3 應用程式邏輯 -->
   <script>
     const { createApp, ref, computed, onMounted, watch } = Vue;
 
     createApp({
       setup() {
-        const isDarkMode = ref(false);
-        const toggleDarkMode = () => {
-          isDarkMode.value = !isDarkMode.value;
-          updateDarkModeClass();
+        // 外觀：'system' 跟隨系統、'light'、'dark'。只存在這台裝置（THEME_KEY），不進備份。
+        const THEME_KEY = 'cleaning_helper_theme';
+        const watchMedia = (query, onChange) => {
+          const mql = window.matchMedia ? window.matchMedia(query) : null;
+          const state = ref(!!(mql && mql.matches));
+          if (mql) {
+            const handler = (e) => { state.value = e.matches; onChange?.(e.matches); };
+            if (mql.addEventListener) mql.addEventListener('change', handler);
+            else if (mql.addListener) mql.addListener(handler);
+          }
+          return state;
         };
-        const updateDarkModeClass = () => {
-          const root = document.getElementById('html-root');
-          if (isDarkMode.value) {
-            root.classList.add('dark');
-          } else {
-            root.classList.remove('dark');
+        const systemDark = watchMedia('(prefers-color-scheme: dark)');
+        const isWide = watchMedia('(min-width: 1024px)');
+        const readThemeMode = () => {
+          const attr = document.documentElement.getAttribute('data-theme');
+          return attr === 'light' || attr === 'dark' ? attr : 'system';
+        };
+        const themeMode = ref(readThemeMode());
+        const isDarkMode = computed(() => themeMode.value === 'dark' || (themeMode.value === 'system' && systemDark.value));
+        const setThemeMode = (mode) => {
+          themeMode.value = mode;
+          const root = document.documentElement;
+          if (mode === 'system') root.removeAttribute('data-theme');
+          else root.setAttribute('data-theme', mode);
+          try {
+            localStorage.setItem(THEME_KEY, mode);
+          } catch (e) {
+            console.error(e);
           }
         };
+        const toggleDarkMode = () => setThemeMode(isDarkMode.value ? 'light' : 'dark');
 
         const currentTab = ref('draw');
         const tabs = ref([
-          { id: 'draw', name: '抽籤工作台', icon: '🎲' },
-          { id: 'members', name: '名單管理', icon: '👥' },
-          { id: 'tasks', name: '掃地工作項目', icon: '🧹' },
-          { id: 'history', name: '掃地工作歷史記錄', icon: '📜' },
-          { id: 'settings', name: '系統設定', icon: '⚙️' },
+          { id: 'draw', name: '抽籤工作台', short: '抽籤', icon: '🎲' },
+          { id: 'members', name: '名單管理', short: '名單', icon: '👥' },
+          { id: 'tasks', name: '掃地工作項目', short: '工作', icon: '🧹' },
+          { id: 'history', name: '歷史記錄', short: '紀錄', icon: '📜' },
+          { id: 'settings', name: '系統設定', short: '設定', icon: '⚙️' },
         ]);
 
         const toastMessage = ref('');
@@ -1945,27 +1796,8 @@ Authorization inquiries: derliang@gmail.com
           closeEditTaskModal();
         };
 
-        const getCategoryBadgeClass = (categoryName) => {
-          const categoryId = categorySettings.value.find(item => item.name === (categoryName || '教室'))?.id;
-          switch (categoryId) {
-            case 'classroom': return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
-            case 'duty': return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-            case 'public': return 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800';
-            case 'restroom': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800';
-            default: return 'bg-slate-100 text-slate-800 border-slate-300';
-          }
-        };
-
-        const getCategoryActiveClass = (categoryName) => {
-          const categoryId = categorySettings.value.find(item => item.name === (categoryName || '教室'))?.id;
-          switch (categoryId) {
-            case 'classroom': return 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400 font-bold';
-            case 'duty': return 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-400 font-bold';
-            case 'public': return 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-400 font-bold';
-            case 'restroom': return 'bg-sky-600 text-white border-sky-700 shadow-md ring-2 ring-sky-400 font-bold';
-            default: return 'bg-teal-600 text-white font-bold';
-          }
-        };
+        // 類別 id（classroom／duty／public／restroom／other），畫面用 data-cat 取色，色票在 :root 的 --cat-*
+        const catId = (categoryName) => categorySettings.value.find(item => item.name === (categoryName || '教室'))?.id || 'other';
 
         const autoDetectIcon = (name) => {
           if (!name) return '🧹';
@@ -3115,7 +2947,7 @@ Authorization inquiries: derliang@gmail.com
         let saveFailed = false;
         const saveData = () => {
           const data = {
-            isDarkMode: isDarkMode.value,
+            isDarkMode: themeMode.value === 'dark',
             members: members.value,
             tasks: tasks.value,
             historyLogs: historyLogs.value,
@@ -3148,10 +2980,6 @@ Authorization inquiries: derliang@gmail.com
           if (raw) {
             try {
               const data = JSON.parse(raw);
-              if (data.isDarkMode !== undefined) {
-                isDarkMode.value = data.isDarkMode;
-                updateDarkModeClass();
-              }
               if (data.members) members.value = data.members;
               if (data.tasks) tasks.value = data.tasks;
               if (data.historyLogs) historyLogs.value = data.historyLogs;
@@ -3317,6 +3145,9 @@ Authorization inquiries: derliang@gmail.com
 
         return {
           isDarkMode,
+          themeMode,
+          setThemeMode,
+          isWide,
           toggleDarkMode,
           currentTab,
           tabs,
@@ -3358,8 +3189,7 @@ Authorization inquiries: derliang@gmail.com
           openEditTaskModal,
           closeEditTaskModal,
           saveEditTask,
-          getCategoryBadgeClass,
-          getCategoryActiveClass,
+          catId,
           ensureSelectedCategory,
           renameCategory,
           toggleCategoryIconPicker,
