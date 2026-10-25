@@ -40,6 +40,10 @@
   - 抽籤工作台的「分配對照表」每張工作卡都有 **🗑️**，可一鍵清空該工作與人員的對應。
   - 智慧關鍵字比對：輸入包含「`搬餐桶`」、「`抬飯`」、「`抬湯`」、「`搬湯`」、「`廚餘`」等關鍵字時，自動套用 **🍱/🍲 餐桶類 Icon**！
 
+- 🎨 **手機、iPad、桌機都好用的介面**：
+  - 桌機左側欄、iPad 側軌、手機底部頁籤；手機上的抽籤按鈕固定在畫面底部，單手就能按。
+  - 淺色（紙本點名簿）與深色（午夜藍黑）兩種外觀，可跟隨系統或手動切換，選擇記在這台裝置。
+
 - 📜 **歷史紀錄與 JSON 備份還原**：
   - 完整記錄歷次抽籤詳情，支援按座號或工作屬性排序。
   - 支援 JSON 備份檔案之匯出與還原（含名單、工作、歷史、類別設定與抽籤偏好）。
@@ -49,7 +53,7 @@
 ## 🛠️ 技術架構
 
 - **前端框架**：[Vue 3](https://vuejs.org/) (SFC Global Build via CDN)
-- **UI 樣式**：[Tailwind CSS](https://tailwindcss.com/) (Dark Mode Ready)
+- **UI 樣式**：自家 CSS design tokens（手機、iPad、桌機自適應；淺色／深色，預設跟隨系統），規範見 [docs/design/DESIGN.md](docs/design/DESIGN.md)
 - **Excel 處理**：[SheetJS (XLSX)](https://sheetjs.com/)
 - **圖片生成**：[html2canvas](https://html2canvas.hertzen.com/)
 - **特效元件**：[Canvas Confetti](https://www.npmjs.com/package/canvas-confetti)
