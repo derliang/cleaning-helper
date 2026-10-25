@@ -7,8 +7,10 @@ node tests/e2e/smoke.test.js
 node tests/e2e/layout.test.js
 node tests/e2e/functional.test.js
 node tests/e2e/contrast.test.js
+node tests/e2e/license.test.js
 ```
 
+- license 測試檢查獨立的授權說明頁（license.html）：沒有 GitHub 連結、淺色與深色對比合格、手機不橫向溢出，且主程式頁尾連到它。
 - contrast 測試逐一量每段文字的實際前景色與背景色（含半透明疊色），一般文字要 ≥ 4.5:1、大字 ≥ 3:1，最小字級 12px；淺色與深色、手機與桌機、五個頁籤都掃。
 - Chrome 不在預設路徑時，設環境變數 CHROME_PATH。
 - 測試會連 CDN 載入 Vue 等函式庫，需要網路。

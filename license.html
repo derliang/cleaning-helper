@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<!--
+Copyright (c) 2026 derliang. All rights reserved.
+Non-commercial use only.
+Authorization inquiries: derliang@gmail.com
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>授權說明｜掃地工作小幫手</title>
+  <script>
+    /* 與主程式共用配色選擇（cleaning_helper_theme）；讀不到就跟隨系統 */
+    (function () {
+      try {
+        var t = localStorage.getItem('cleaning_helper_theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* tokens 與主程式 v3「點名表」一致（docs/design/DESIGN.md） */
+    :root {
+      --font: 'Noto Sans TC', system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      --bg: #F2F3F5; --surface: #FFFFFF; --surface-2: #ECEEF1;
+      --line: #D3D7DD; --line-strong: #78818D;
+      --text: #0F1318; --text-2: #333A43; --text-3: #4F5864;
+      --primary: #1D4ED8; --primary-ink: #1B3A9B; --primary-soft: #E7EDFF; --primary-line: #A8BCF3;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0B0C0E; --surface: #15171A; --surface-2: #1D2024;
+        --line: #2C3036; --line-strong: #8A929D;
+        --text: #F5F6F8; --text-2: #D5D9DF; --text-3: #B0B7C0;
+        --primary: #8DB5FF; --primary-ink: #B5CEFF; --primary-soft: #1A2742; --primary-line: #3A558E;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0B0C0E; --surface: #15171A; --surface-2: #1D2024;
+      --line: #2C3036; --line-strong: #8A929D;
+      --text: #F5F6F8; --text-2: #D5D9DF; --text-3: #B0B7C0;
+      --primary: #8DB5FF; --primary-ink: #B5CEFF; --primary-soft: #1A2742; --primary-line: #3A558E;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: var(--font); font-size: 16px; line-height: 1.75;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; }
+    .back {
+      display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+      border: 1.5px solid var(--line-strong); border-radius: 10px;
+      background: var(--surface); color: var(--text); font-weight: 700; text-decoration: none;
+    }
+    .back:hover { background: var(--surface-2); }
+    a:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    h1 { font-size: 26px; line-height: 1.35; margin: 20px 0 4px; }
+    .sub { color: var(--text-3); margin: 0 0 20px; font-size: 15px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+      padding: 18px 18px; margin: 0 0 16px;
+    }
+    .card h2 { font-size: 19px; line-height: 1.4; margin: 0 0 8px; }
+    .card p { margin: 0 0 8px; color: var(--text-2); }
+    .card p:last-child { margin-bottom: 0; }
+    .card ul { margin: 6px 0 0; padding-left: 22px; color: var(--text-2); }
+    .card li { margin: 4px 0; }
+    .summary { border: 2px solid var(--primary); background: var(--primary-soft); }
+    .summary h2 { color: var(--primary-ink); }
+    .summary li { color: var(--text); }
+    a { color: var(--primary-ink); }
+    code { font-family: ui-monospace, Consolas, monospace; font-size: 14px; background: var(--surface-2); padding: 1px 6px; border-radius: 6px; }
+    .foot { color: var(--text-3); font-size: 14px; text-align: center; margin-top: 24px; }
+    @media (min-width: 768px) {
+      .wrap { padding: 32px 24px 64px; }
+      h1 { font-size: 30px; }
+      .card { padding: 22px 26px; }
+    }
+    @media print {
+      body { background: #fff; color: #000; }
+      .back { display: none; }
+      .card { border-color: #999; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="back" href="index.html">← 回到掃地工作小幫手</a>
+
+    <h1>使用授權與著作權聲明</h1>
+    <p class="sub">Copyright © 2026 黃德亮（公開作者識別：derliang）｜保留所有權利（All Rights Reserved）｜聲明日期 2026-10-24</p>
+
+    <section class="card summary" aria-label="重點摘要">
+      <h2>先看重點</h2>
+      <ul>
+        <li>聖功女中的師生：可以免費使用，限非營利教育用途。</li>
+        <li>其他學校、機構或個人：請先寫信到 <a href="mailto:derliang@gmail.com">derliang@gmail.com</a>，等作者回信同意後才能使用。</li>
+        <li>所有人都不能拿來營利，包括販售、收費部署、付費託管、轉售。</li>
+        <li>不能自行重製程式碼、修改、再發布或轉授權，需要的話請另外申請。</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>一、授權範圍</h2>
+      <p>本聲明適用於本程式中由著作權人擁有或有權授權的原創程式碼及相關作品，不包含另有授權條款的第三方元件、素材或程式碼。</p>
+    </section>
+
+    <section class="card">
+      <h2>二、聖功女中師生使用</h2>
+      <p>臺南市天主教聖功女子高級中學的在校師生，可以在非營利教育目的範圍內免費操作本程式。此許可不包含任意重製程式碼、修改、重新發布、散布、轉授權或商業利用的權利；有這些需求，請先取得另行授權。</p>
+    </section>
+
+    <section class="card">
+      <h2>三、其他學校、機構或個人</h2>
+      <p>其他學校及其師生、機構與個人如要使用本程式，請先寄信到 <a href="mailto:derliang@gmail.com">derliang@gmail.com</a>，說明使用單位、用途、對象、範圍，以及是否涉及部署或複製。</p>
+      <p>須取得著作權人以 Email 明確回覆同意，並且只能在核准的範圍內使用。寄出申請信本身不代表已獲授權。除非雙方另有約定，不需要另外簽署紙本或正式書面契約。</p>
+    </section>
+
+    <section class="card">
+      <h2>四、所有使用者都須遵守非營利限制</h2>
+      <p>除非著作權人另外明確授權，所有使用者都不得把本程式用於營利活動，包括但不限於販售、收費授權、作為付費服務的核心、收費部署、付費託管、商業轉售，或重新包裝後牟利。取得免費使用許可，不代表取得商業授權。</p>
+    </section>
+
+    <section class="card">
+      <h2>五、保留權利</h2>
+      <p>未經著作權人另行授權，不得擅自重製、修改、改作、再散布、公開發布、轉授權本程式，也不得刪除或竄改原有著作權資訊、冒稱為原作者。本條不限制依法不得排除的使用權利，也不改變第三方原有的授權。</p>
+    </section>
+
+    <section class="card">
+      <h2>六、關於公開原始碼</h2>
+      <p>本程式的原始碼若公開在網路平台，只代表原始碼可依該平台的條款被檢視；不代表本程式採用開放原始碼授權，也不代表授權任何第三人自由利用、複製、修改、散布或販售。平台條款本身明定的權利，仍依平台條款處理。</p>
+    </section>
+
+    <section class="card">
+      <h2>七、第三方素材與既有授權</h2>
+      <p>第三方套件、素材、程式碼及其他著作，依其各自的授權使用。本聲明不主張超出著作權人實際擁有或可授權的權利，也不溯及撤銷先前已有效授出的授權。</p>
+    </section>
+
+    <section class="card">
+      <h2>八、聯絡</h2>
+      <p>授權、跨校使用、合作與其他詢問：<a href="mailto:derliang@gmail.com">derliang@gmail.com</a></p>
+    </section>
+
+    <section class="card">
+      <h2>九、生效與版本</h2>
+      <p>本版聲明日期為 2026-10-24。此日期是聲明的版本日期，不應被當成作品的首次創作日期。</p>
+    </section>
+
+    <section class="card">
+      <h2>十、與先前 MIT 授權的版本分界</h2>
+      <p>本程式先前發布的版本曾以 MIT License 公開。為尊重已依該授權取得的權利，作以下區分：</p>
+      <ul>
+        <li><strong>v2.11 及之前所有已發布版本</strong>：依其當時公開的 MIT License 條款繼續有效，本聲明不溯及撤銷。</li>
+        <li><strong>2026-10-24 本次版權更新之後新增或修改的版本與內容</strong>：適用本聲明的限制性授權，不再以 MIT License 授權。</li>
+        <li>他人依 MIT License 合法取得的舊版本副本，仍可依 MIT 條款使用，但不因此取得後續新版本的 MIT 授權。</li>
+      </ul>
+    </section>
+
+    <p class="foot">© 2026 derliang｜保留所有權利｜限非營利使用</p>
+  </main>
+</body>
+</html>
