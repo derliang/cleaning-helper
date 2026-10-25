@@ -10,7 +10,7 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++
     await b.eval('window.confirm = () => true; 1');
     const cloak = await b.eval("document.querySelector('#app').hasAttribute('v-cloak')");
     ok(!cloak, 'Vue 已掛載（v-cloak 已移除）');
-    ok((await b.eval("document.querySelectorAll('.tcard').length")) > 0, '抽籤台有工作卡片');
+    ok((await b.eval("document.querySelectorAll('.rrow').length")) > 0, '抽籤台有工作列');
     ok((await b.eval("document.querySelectorAll('.sidebar .nav-item').length")) === 5, '側欄有 5 個頁籤');
 
     for (const [i, id] of ['draw', 'members', 'tasks', 'history', 'settings'].entries()) {
@@ -29,7 +29,7 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++
     ok((await b.eval("document.documentElement.getAttribute('data-theme')")) === 'dark', '按深色 → data-theme=dark');
     ok((await b.eval("localStorage.getItem('cleaning_helper_theme')")) === 'dark', '寫入 localStorage');
     const bg = await b.eval("getComputedStyle(document.body).backgroundColor");
-    ok(bg === 'rgb(13, 18, 25)', '深色背景為 2b 午夜 #0D1219：' + bg);
+    ok(bg === 'rgb(11, 12, 14)', '深色背景為 #0B0C0E：' + bg);
     await b.goto('http://127.0.0.1:18765/index.html');
     ok((await b.eval("document.documentElement.getAttribute('data-theme')")) === 'dark', '重新整理後保持深色');
     await b.eval("document.querySelectorAll('.sidebar .nav-item')[4].click(); 1");
