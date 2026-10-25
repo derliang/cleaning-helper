@@ -14,7 +14,7 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++
   const tab = async (i) => { await click('.sidebar .nav-item', i); await sleep(150); };
   try {
     await b.eval(`window.confirm = () => true; window.__dl = []; const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(this.download); else oc.call(this); }; 1`);
-    const initTasks = await $$('.board .tcard');
+    const initTasks = await $$('.roster .rrow');
     ok(initTasks > 0, `預設工作 ${initTasks} 項`);
 
     // 設定：無動畫
@@ -25,10 +25,10 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++
     // 抽全部
     await clickText('.action-btns .btn-primary', '抽全部');
     for (let i = 0; i < 40; i++) { await sleep(500); if (!(await b.eval("document.querySelector('.action-btns .btn-primary').disabled"))) break; }
-    const filled = await $$('.board .tag:not(.tag-empty)');
-    const required = await b.eval("[...document.querySelectorAll('.board .badge')].reduce((s, e) => s + (parseInt(e.textContent.split('·')[1]) || 0), 0)");
+    const filled = await $$('.roster .tag:not(.tag-empty)');
+    const required = await b.eval("[...document.querySelectorAll('.rrow-meta > span:last-child')].reduce((s, e) => s + (parseInt(e.textContent) || 0), 0)");
     ok(filled === required, `抽全部後每個缺額都有人（${filled}/${required}）`);
-    const names = await text('.board .tag:not(.tag-empty) > span');
+    const names = await text('.roster .tag:not(.tag-empty) > span');
     ok(new Set(names).size === names.length, '沒有同一個人被抽到兩次');
     ok((await text('.results-title .chip'))[0].includes('抽籤完成'), '狀態顯示抽籤完成');
     await tab(3);
@@ -40,15 +40,15 @@ const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++
 
     // 清除 → 抽一人
     await click('.action-btns .btn-danger');
-    ok((await $$('.board .tag:not(.tag-empty)')) === 0, '按 🗑️ 清除結果');
-    await clickText('.action-btns .btn-accent', '抽一人');
+    ok((await $$('.roster .tag:not(.tag-empty)')) === 0, '按 🗑️ 清除結果');
+    await clickText('.action-btns .btn', '抽一人');
     await sleep(800);
-    ok((await $$('.board .tag:not(.tag-empty)')) === 1, '抽一人只抽出 1 位');
+    ok((await $$('.roster .tag:not(.tag-empty)')) === 1, '抽一人只抽出 1 位');
     // 卡片 🗑️ 清空
-    const trash = await b.eval("[...document.querySelectorAll('.tcard .btn-danger')].findIndex(e => !e.disabled)");
+    const trash = await b.eval("[...document.querySelectorAll('.rrow .btn-danger')].findIndex(e => !e.disabled)");
     ok(trash >= 0, '有人的卡片上 🗑️ 可按');
-    await click('.tcard .btn-danger', trash);
-    ok((await $$('.board .tag:not(.tag-empty)')) === 0, '卡片 🗑️ 清空該工作人員');
+    await click('.rrow .btn-danger', trash);
+    ok((await $$('.roster .tag:not(.tag-empty)')) === 0, '卡片 🗑️ 清空該工作人員');
 
     // 匯出
     await clickText('.export .btn', 'PNG'); await sleep(3500);
