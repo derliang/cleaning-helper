@@ -338,12 +338,12 @@ Authorization inquiries: derliang@gmail.com
 .btn-assigned { background: var(--inverse); border-color: var(--inverse); }
 
 /* 工作項目 */
-.cat-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .cat-tile { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 14px; border: 1.5px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); text-align: left; }
 .cat-tile[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); box-shadow: 0 0 0 1.5px var(--primary); }
 .cat-tile .ct-ico { font-size: 26px; line-height: 1; }
-.cat-tile .ct-name { font-size: 16px; font-weight: 700; line-height: 1.2; display: block; }
-.cat-tile .ct-sub { font-size: 14px; color: var(--text-2); }
+.cat-tile .ct-name { font-size: 16px; font-weight: 700; line-height: 1.2; display: block; white-space: nowrap; }
+.cat-tile .ct-sub { font-size: 14px; color: var(--text-2); white-space: nowrap; }
 .pick { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .pick button { min-height: var(--tap); border: 1.5px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font-size: 16px; font-weight: 500; }
 .pick button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 700; }
@@ -354,12 +354,13 @@ Authorization inquiries: derliang@gmail.com
 .check-row input[type="checkbox"]:not(.switch) { width: 24px; height: 24px; accent-color: var(--primary); }
 
 .tlist { display: flex; flex-direction: column; }
+.tlist { container-type: inline-size; }
 .thead { display: none; }
 .trow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; grid-template-areas: "no main heavy" "ctrl ctrl ctrl"; gap: 8px 10px; padding: 16px; border-top: 1px solid var(--line); align-items: center; }
 .trow[data-assigned="true"] { background: var(--primary-soft); }
 .trow .t-no { grid-area: no; font-size: 15px; font-weight: 700; color: var(--text-3); text-align: center; font-variant-numeric: tabular-nums; }
 .trow .t-main { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.trow .t-name { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 18px; font-weight: 700; line-height: 1.35; }
+.trow .t-name { word-break: keep-all; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 18px; font-weight: 700; line-height: 1.35; }
 .trow .t-desc { font-size: 14px; color: var(--text-3); }
 .trow .t-heavy { grid-area: heavy; }
 .trow .t-ctrl { grid-area: ctrl; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -488,13 +489,7 @@ label.opt:hover { background: var(--surface-2); }
 
   .two-col { grid-template-columns: 330px minmax(0, 1fr); }
   .two-col > .col-form { order: 0; }
-  .cat-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pick { grid-template-columns: repeat(4, 1fr); }
-  .thead { display: grid; grid-template-columns: 40px 56px minmax(0, 1fr) 170px 150px; gap: 10px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: var(--text-3); border-top: 1px solid var(--line); }
-  .trow { grid-template-columns: 40px 56px minmax(0, 1fr) 170px 150px; grid-template-areas: "no heavy main step acts"; }
-  .trow .t-ctrl { display: contents; }
-  .trow .t-step { grid-area: step; }
-  .trow .t-acts { grid-area: acts; justify-content: flex-end; }
 
   .set-card { padding: 28px; }
   .opt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -528,6 +523,17 @@ label.opt:hover { background: var(--surface-2); }
   .nav-group { display: flex; flex-direction: column; gap: 2px; }
   .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
   .toast-wrap { left: auto; right: 24px; bottom: 24px; padding: 0; justify-content: flex-end; }
+}
+
+/* 工作列表依「自己的寬度」切換，不看視窗寬（側欄與表單佔掉寬度時，視窗寬不代表列表寬） */
+@container (min-width: 600px) {
+  .thead { display: grid; grid-template-columns: 40px 56px minmax(0, 1fr) 170px 150px; gap: 10px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: var(--text-3); border-top: 1px solid var(--line); }
+  .trow { grid-template-columns: 40px 56px minmax(0, 1fr) 170px 150px; grid-template-areas: "no heavy main step acts"; }
+  .trow .t-ctrl { display: contents; }
+  .trow .t-step { grid-area: step; }
+  .trow .t-acts { grid-area: acts; justify-content: flex-end; }
+  .trow .t-name { flex-wrap: wrap; }
+  .heavy-btn { white-space: nowrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
