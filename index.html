@@ -9,7 +9,7 @@ Authorization inquiries: derliang@gmail.com
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>掃地工作小幫手 v2.13</title>
+  <title>掃地工作小幫手 v2.14</title>
   <script>
     /* 在畫面繪製前套用配色，避免深色使用者先閃一下亮色。規範見 docs/design/DESIGN.md */
     (function () {
@@ -487,8 +487,6 @@ label.opt:hover { background: var(--surface-2); }
   .rrow-people { grid-column: 2; }
   .rrow > .btn { grid-column: 3; grid-row: 1; }
 
-  .two-col { grid-template-columns: 330px minmax(0, 1fr); }
-  .two-col > .col-form { order: 0; }
   .pick { grid-template-columns: repeat(4, 1fr); }
 
   .set-card { padding: 28px; }
@@ -516,6 +514,7 @@ label.opt:hover { background: var(--surface-2); }
   .page-title { font-size: 32px; }
   .main { padding-top: 28px; padding-bottom: 40px; gap: 24px; }
   .two-col { grid-template-columns: 350px minmax(0, 1fr); gap: 20px; }
+  .two-col > .col-form { order: 0; }
   .shell-side { grid-template-columns: 256px minmax(0, 1fr); }
   .rail { display: none; }
   .sidebar { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: var(--viewport-h, 100dvh); padding: 20px 14px 16px; background: var(--surface); border-right: 1px solid var(--line); }
@@ -572,7 +571,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
         <span class="brand-mark" aria-hidden="true">🧹</span>
         <div class="brand-text">
           <span class="brand-name">掃地工作小幫手</span>
-          <span class="brand-sub">v2.13</span>
+          <span class="brand-sub">v2.14</span>
         </div>
       </div>
       <nav class="nav-group" aria-label="主要頁面">
@@ -637,7 +636,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             </div>
             <div class="ov-cell">
               <div class="ov-label">工作所需人數</div>
-              <div class="ov-value"><span>{{ totalRequiredSlots }}</span><span class="ov-unit">人（共 {{ tasks.length }} 項）</span></div>
+              <div class="ov-value"><span>{{ totalRequiredSlots }}</span><span class="ov-unit">人（共 {{ activeTasks.length }} 項）</span></div>
             </div>
             <div class="ov-cell">
               <div class="ov-label">人力供給狀態</div>
@@ -671,7 +670,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             <div class="results-head">
               <h2 class="results-title">
                 <span>本班掃地工作分配表</span>
-                <span v-if="hasDrawRun && drawTimestamp" class="chip chip-primary">✓ {{ drawTimestamp }} 抽籤完成</span>
+                <span v-if="hasDrawRun && drawTimestamp && drawFilledAll" class="chip chip-primary">✓ {{ drawTimestamp }} 抽籤完成</span>
+                <span v-else-if="hasDrawRun && drawFilledCount > 0" class="chip">抽籤進行中（已填 {{ drawFilledCount }}/{{ drawNeededCount }}）</span>
                 <span v-else class="chip">待抽籤狀態</span>
               </h2>
               <div v-if="tasks.length > 0" class="export" role="group" aria-label="匯出">
@@ -738,6 +738,16 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
               <div class="exempt-title">免掃地成員（共 {{ exemptDisplayList.length }} 人，按座號排序）</div>
               <div class="exempt-list">
                 <span v-for="member in exemptDisplayList" :key="member.id" class="tag">
+                  <b v-if="member.seatNo">{{ String(member.seatNo).padStart(2, '0') }}</b>
+                  <span>{{ member.name }}</span>
+                </span>
+              </div>
+            </div>
+
+            <div v-if="benchedMembers.length > 0" class="exempt">
+              <div class="exempt-title">本次輪空成員（共 {{ benchedMembers.length }} 人，已參加抽籤但這次沒被抽到）</div>
+              <div class="exempt-list">
+                <span v-for="member in benchedMembers" :key="member.id" class="tag">
                   <b v-if="member.seatNo">{{ String(member.seatNo).padStart(2, '0') }}</b>
                   <span>{{ member.name }}</span>
                 </span>
@@ -878,6 +888,13 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             </details>
 
             <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+              <div v-if="importReport.length > 0" class="exempt" role="status">
+                <div class="exempt-title">Excel 匯入：以下 {{ importReport.length }} 處已自動修正或提醒</div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.6">
+                  <li v-for="(line, i) in importReport" :key="i">{{ line }}</li>
+                </ul>
+                <div><button type="button" class="btn btn-sm" @click="importReport = []">我知道了，關閉</button></div>
+              </div>
               <div class="cat-tiles">
                 <template v-for="cat in categoryStats" :key="cat.name">
                   <button v-if="cat.taskCount > 0" type="button" class="cat-tile" :aria-pressed="String(selectedCategory === cat.name)" @click="selectedCategory = cat.name">
@@ -986,7 +1003,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
                 </div>
 
                 <div v-if="log.exemptMembers && log.exemptMembers.length > 0" class="exempt">
-                  <div class="exempt-title">當次免掃地成員（按座號排序）</div>
+                  <div class="exempt-title">當次輪空成員（已參加抽籤但沒被抽到，按座號排序）</div>
                   <div class="exempt-list">
                     <span v-for="m in getSortedHistoryMembers(log.exemptMembers)" :key="m.id" class="tag">
                       <b v-if="m.seatNo">{{ String(m.seatNo).padStart(2, '0') }}</b>
@@ -1294,7 +1311,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 
         <div v-if="exemptDisplayList.length > 0" style="margin-top: 8px; font-size: 10.5px; color: #334155; background-color: #f8fafc; padding: 7px 9px; border-radius: 6px; border: 1px solid #e2e8f0;">
           <strong>✨ 免掃地成員：</strong>
-          <span>{{ exemptDisplayListNames }}</span>
+          <span>{{ namesOf(exemptDisplayList) }}</span>
+        </div>
+        <div v-if="benchedMembers.length > 0" style="margin-top: 8px; font-size: 10.5px; color: #334155; background-color: #f8fafc; padding: 7px 9px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <strong>輪空成員：</strong>
+          <span>{{ namesOf(benchedMembers) }}</span>
         </div>
 
       </div>
@@ -1396,6 +1417,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
         };
         // 同名但座號不同的同學可以並存，只有「座號＋姓名」都相同才算重複
         const isDuplicateMember = (name, seatNo) => members.value.some(m => m.name === name && (m.seatNo || null) === (seatNo || null));
+        // 座號必須唯一：回傳已占用該座號的成員（沒有則 undefined）
+        const findSeatOwner = (seatNo) => members.value.find(m => (m.seatNo || null) === (seatNo || null));
 
         const addSingleMember = () => {
           const raw = newMemberName.value.trim();
@@ -1412,6 +1435,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 
           if (isDuplicateMember(name, seatNo)) {
             showToast(`成員「${seatNo}號 ${name}」已在名單中`, '⚠️');
+            return;
+          }
+          const seatOwner = findSeatOwner(seatNo);
+          if (seatOwner) {
+            showToast(`座號 ${seatNo} 已被「${seatOwner.name}」使用，座號不能重複。請改用其他座號，或先到名單修改`, '⚠️');
             return;
           }
 
@@ -1435,6 +1463,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           const rawNames = batchMemberInput.value.split(/[\r\n,，、;；]+/);
           let addedCount = 0;
           let totalCount = 0;
+          const seatConflicts = [];
           let maxSeat = members.value.reduce((max, m) => Math.max(max, m.seatNo || 0), 0);
 
           rawNames.forEach(rawItem => {
@@ -1452,7 +1481,10 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
               seatNo = maxSeat;
             }
 
-            if (name && !isDuplicateMember(name, seatNo)) {
+            const batchSeatOwner = findSeatOwner(seatNo);
+            if (name && !isDuplicateMember(name, seatNo) && batchSeatOwner) {
+              seatConflicts.push(`${seatNo}號 ${name}（座號已被「${batchSeatOwner.name}」使用）`);
+            } else if (name && !isDuplicateMember(name, seatNo)) {
               members.value.push({
                 id: Date.now() + Math.random().toString(36).substring(2, 5),
                 seatNo: seatNo,
@@ -1468,7 +1500,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           batchMemberInput.value = '';
           const skippedCount = totalCount - addedCount;
           if (addedCount > 0) {
-            showToast(`已匯入 ${addedCount} 位成員${skippedCount > 0 ? `，略過 ${skippedCount} 位重複` : ''}！`, '🎉');
+            showToast(`已匯入 ${addedCount} 位成員${skippedCount > 0 ? `，略過 ${skippedCount} 位重複` : ''}！${seatConflicts.length ? '座號重複未加入：' + seatConflicts.slice(0, 3).join('、') + (seatConflicts.length > 3 ? '…' : '') : ''}`, seatConflicts.length ? '⚠️' : '🎉');
+          } else if (seatConflicts.length) {
+            showToast(`沒有新增成員，座號重複：${seatConflicts.slice(0, 3).join('、')}${seatConflicts.length > 3 ? '…' : ''}`, '⚠️');
           } else {
             showToast('沒有新增任何成員（名單可能全部重複）', '⚠️');
           }
@@ -1481,16 +1515,36 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           showToast('已重新將所有成員依序劃分 1 ~ N 座號！', '🔢');
         };
 
+        // 成員被設為免掃地（或被刪除）後，不能還留在目前的抽籤結果裡：從各工作移除、缺額重新顯示待補
+        const purgeMembersFromResults = (ids) => {
+          if (ids.size === 0) return 0;
+          let removed = 0;
+          currentResults.value.forEach(r => {
+            const before = (r.assignedMembers || []).length;
+            r.assignedMembers = (r.assignedMembers || []).filter(m => !ids.has(m.id));
+            removed += before - r.assignedMembers.length;
+          });
+          exemptMembers.value = exemptMembers.value.filter(m => !ids.has(m.id));
+          return removed;
+        };
+
         const toggleAttendance = (member) => {
           member.present = !member.present;
+          if (!member.present) {
+            const removed = purgeMembersFromResults(new Set([member.id]));
+            if (removed > 0) showToast(`「${member.name}」已改為免掃地，已從目前的抽籤結果移除`, 'ℹ️');
+          }
         };
 
         const setAllAttendance = (status) => {
           members.value.forEach(m => m.present = status);
-          showToast(status ? '已將全體設為參與抽籤' : '已將全體設為免掃地', '✅');
+          let removed = 0;
+          if (!status) removed = purgeMembersFromResults(new Set(members.value.map(m => m.id)));
+          showToast(status ? '已將全體設為參與抽籤' : `已將全體設為免掃地${removed > 0 ? '，並清空目前抽籤結果中的人員' : ''}`, '✅');
         };
 
         const removeMember = (id) => {
+          purgeMembersFromResults(new Set([id]));
           members.value = members.value.filter(m => m.id !== id);
         };
 
@@ -1954,6 +2008,37 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           });
         };
 
+        // SheetJS 0.18.5 讀 .xlsx 時，遇到其他軟體（例如 Python openpyxl）把 emoji 寫成數字參照（如 &#129533;）
+        // 會把超過 16 位元的碼位截斷成亂碼字元。讀取前先把 xlsx 內 XML 的這類參照換回實際字元；失敗就照原檔讀。
+        const readWorkbookKeepEmoji = (data) => {
+          try {
+            if (data[0] === 0x50 && data[1] === 0x4b && XLSX.CFB && XLSX.CFB.read && XLSX.CFB.write) {
+              const cfb = XLSX.CFB.read(data, { type: 'array' });
+              const refRe = /&#(?:x([0-9a-fA-F]+)|([0-9]+));/g;
+              let changed = false;
+              cfb.FileIndex.forEach(entry => {
+                if (!entry || !entry.content || !/[.]xml$/i.test(entry.name || '')) return;
+                const text = new TextDecoder('utf-8').decode(entry.content);
+                const fixedText = text.replace(refRe, (m, hex, dec) => {
+                  const cp = hex ? parseInt(hex, 16) : parseInt(dec, 10);
+                  return cp > 0xFFFF && cp <= 0x10FFFF ? String.fromCodePoint(cp) : m;
+                });
+                if (fixedText !== text) {
+                  entry.content = new TextEncoder().encode(fixedText);
+                  entry.size = entry.content.length;
+                  changed = true;
+                }
+              });
+              if (changed) return XLSX.read(XLSX.CFB.write(cfb, { type: 'array', fileType: 'zip' }), { type: 'array' });
+            }
+          } catch (err) {
+            console.warn('emoji 修正失敗，改用原檔讀取', err);
+          }
+          return XLSX.read(data, { type: 'array' });
+        };
+
+        const importReport = ref([]);
+
         const importExcelTemplate = (event) => {
           const file = event.target.files[0];
           if (!file) return;
@@ -1966,12 +2051,14 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
                 return;
               }
               const data = new Uint8Array(e.target.result);
-              const workbook = XLSX.read(data, { type: 'array' });
+              const workbook = readWorkbookKeepEmoji(data);
               const firstSheetName = workbook.SheetNames[0];
               const worksheet = workbook.Sheets[firstSheetName];
               const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
               const imported = [];
+              const fixes = [];
+              const seenNames = new Map();
               const validCategories = allCategoryNames.value;
               const fallbackCategory = getFallbackCategory();
               const header = jsonRows[0] || [];
@@ -1980,11 +2067,28 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
                 if (idx === 0 || !row || row.length === 0) return;
                 const hasAnyValue = row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
                 if (!hasAnyValue) return;
+                const rowNo = idx + 1;
                 const catRaw = row[1] ? String(row[1]).trim() : '';
                 const cat = validCategories.includes(catRaw) ? catRaw : fallbackCategory;
+                if (!validCategories.includes(catRaw)) {
+                  fixes.push(`第 ${rowNo} 列：分類「${catRaw || '（空白）'}」不存在，已改放「${fallbackCategory}」`);
+                }
                 const rawName = row[2] ? String(row[2]).trim() : '';
                 const name = rawName || `未命名工作 ${imported.length + 1}`;
-                const count = row[3] ? parseInt(row[3], 10) || 1 : 1;
+                if (!rawName) fixes.push(`第 ${rowNo} 列：工作名稱空白，已自動命名為「${name}」`);
+                const rawCount = row[3] !== undefined && row[3] !== null ? String(row[3]).trim() : '';
+                const parsedCount = parseInt(rawCount, 10);
+                const count = Number.isNaN(parsedCount) ? 1 : parsedCount;
+                if (Number.isNaN(parsedCount) || parsedCount < 1) {
+                  fixes.push(`第 ${rowNo} 列「${name}」：需求人數「${rawCount || '（空白）'}」無效，已改為 1 人`);
+                } else if (parsedCount > 50) {
+                  fixes.push(`第 ${rowNo} 列「${name}」：需求人數 ${parsedCount} 人偏大，已照收（請確認是否正確）`);
+                }
+                if (seenNames.has(name)) {
+                  fixes.push(`第 ${rowNo} 列「${name}」：與第 ${seenNames.get(name)} 列同名，兩項都已保留`);
+                } else {
+                  seenNames.set(name, rowNo);
+                }
                 const iconRaw = hasIconColumn && row[4] ? String(row[4]).trim() : '';
                 const isHeavyStr = hasIconColumn
                   ? (row[5] ? String(row[5]).trim() : '')
@@ -2005,10 +2109,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
               });
 
               if (imported.length > 0) {
+                if (!confirm(`匯入會「取代」目前全部 ${tasks.value.length} 項掃地工作，改成檔案中的 ${imported.length} 項。\n\n確定要匯入嗎？（匯入後可在本頁按「復原」還原）`)) return;
                 pushUndo('匯入 Excel 工作');
                 tasks.value = imported;
                 sanitizeMemberAssignments();
-                showToast(`成功從 Excel (.xlsx) 匯入 ${imported.length} 項工作！`, '🎉');
+                importReport.value = fixes;
+                showToast(`成功從 Excel (.xlsx) 匯入 ${imported.length} 項工作！${fixes.length ? `（有 ${fixes.length} 項自動修正或提醒，見工作列表上方）` : ''}`, fixes.length ? '⚠️' : '🎉');
               } else {
                 showToast('Excel 檔案中無有效工作列', '⚠️');
               }
@@ -2262,22 +2368,30 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
         };
         watch([tasks, categorySettings], syncResultsWithTasks, { deep: true });
 
-        const exemptDisplayList = computed(() => {
-          const list = [...nonPresentMembers.value];
-          if (exemptMembers.value && exemptMembers.value.length > 0) {
-            exemptMembers.value.forEach(m => {
-              if (!list.some(x => x.id === m.id)) {
-                list.push(m);
-              }
-            });
-          }
-          return list.sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
+        // 抽籤進度：已填名額 / 需求名額（只算目前顯示中的工作）
+        const drawFilledCount = computed(() => displayTaskCards.value.reduce((n, c) => n + Math.min(c.assignedMembers.length, c.requiredCount), 0));
+        const drawNeededCount = computed(() => displayTaskCards.value.reduce((n, c) => n + c.requiredCount, 0));
+        const drawFilledAll = computed(() => {
+          if (!hasDrawRun.value) return false;
+          const full = displayTaskCards.value.every(c => c.assignedMembers.length >= c.requiredCount);
+          // 全部填滿，或已無人可抽（所有應抽籤成員都已排進工作）
+          const assignedIds = new Set();
+          currentResults.value.forEach(r => (r.assignedMembers || []).forEach(m => assignedIds.add(m.id)));
+          const noOneLeft = presentMembers.value.every(m => assignedIds.has(m.id));
+          return full || noOneLeft;
         });
 
-        const exemptDisplayListNames = computed(() => {
-          if (exemptDisplayList.value.length === 0) return '無';
-          return exemptDisplayList.value.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
+        // 輪空：應抽籤但這次沒被抽到的人（與「免掃地」＝名單頁取消勾選的人 不同）
+        const benchedMembers = computed(() => {
+          const skip = new Set(nonPresentMembers.value.map(m => m.id));
+          return (exemptMembers.value || []).filter(m => !skip.has(m.id) && m.present !== false)
+            .slice().sort((a, b) => (a.seatNo || 0) - (b.seatNo || 0));
         });
+
+        // 免掃地＝名單頁取消勾選的人
+        const exemptDisplayList = computed(() => [...nonPresentMembers.value]);
+
+        const namesOf = (list) => list.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
 
         const getFirstAssignedSeatNo = (item) => {
           const seatNumbers = (item.assignedMembers || [])
@@ -2471,6 +2585,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
         };
 
         // 全體抽籤 (抽全部按鈕)：只補缺額——已由「抽一人」抽出或手動指定的成員保留；要整批重抽請先按 🗑️ 清除結果
+        // 抽的順序：辛苦工作先抽（先把人力用在辛苦工作，並讓「不悲情」有足夠候選人）、缺額留給一般工作；
+        // 揭曉動畫仍是「一般工作先、辛苦工作壓軸」。
         const startDraw = async () => {
           if (isDrawing.value) return;
           if (presentMembers.value.length === 0) {
@@ -2482,39 +2598,72 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             return;
           }
 
-          clearUndoStack();
-          isDrawing.value = true;
-          hasDrawRun.value = true;
-          exemptMembers.value = [];
-
-          if (currentResults.value.length === 0) {
+          const hadNoResults = currentResults.value.length === 0;
+          if (hadNoResults) {
             currentResults.value = activeTasks.value.map(buildResultFromTask);
           } else {
             syncResultsWithTasks();
             syncManualAssignmentsToResults();
           }
 
+          const alreadyAssignedIds = new Set();
+          currentResults.value.forEach(res => {
+            (res.assignedMembers || []).forEach(m => alreadyAssignedIds.add(m.id));
+          });
+          const unassignedPool = presentMembers.value.filter(m => !activeTaskIds.value.has(m.assignedTaskId) && !alreadyAssignedIds.has(m.id));
+          const openSlots = activeTasks.value.reduce((sum, task) => {
+            const res = currentResults.value.find(r => r.taskId === task.id);
+            return sum + (res ? Math.max(0, task.count - (res.assignedMembers || []).length) : 0);
+          }, 0);
+
+          // 沒有缺額或沒有人可抽：不要空轉、也不要憑空多一筆歷史紀錄
+          if (openSlots === 0 || unassignedPool.length === 0) {
+            if (hadNoResults) currentResults.value = [];
+            showToast(openSlots === 0
+              ? '所有工作人數皆已填滿，沒有需要抽的缺額。要整批重抽請先按 🗑️ 清除結果'
+              : '已沒有可抽的成員（其餘成員都已排進工作），無法再補缺額', 'ℹ️');
+            return;
+          }
+
+          clearUndoStack();
+          isDrawing.value = true;
+          hasDrawRun.value = true;
+          exemptMembers.value = [];
+
           try {
-            const alreadyAssignedIds = new Set();
-            currentResults.value.forEach(res => {
-              (res.assignedMembers || []).forEach(m => alreadyAssignedIds.add(m.id));
-            });
-            const unassignedPool = presentMembers.value.filter(m => !activeTaskIds.value.has(m.assignedTaskId) && !alreadyAssignedIds.has(m.id));
             const pool = shuffleArray(unassignedPool);
             const lastDrawMaps = getLastDrawMaps();
 
-            // 一般工作先抽，辛苦工作壓軸
-            const taskExecutionOrder = [...activeTasks.value].sort((a, b) => {
+            // 抽籤順序：辛苦工作優先填滿，缺額（人力不足時）留給一般工作
+            const drawOrder = [...activeTasks.value].sort((a, b) => {
+              if (a.isHeavy && !b.isHeavy) return -1;
+              if (!a.isHeavy && b.isHeavy) return 1;
+              return 0;
+            });
+            const plan = new Map();
+            drawOrder.forEach(task => {
+              const targetResItem = currentResults.value.find(r => r.taskId === task.id);
+              if (!targetResItem) return;
+              const assigned = [...(targetResItem.assignedMembers || [])];
+              const neededCount = Math.max(0, task.count - assigned.length);
+              for (let i = 0; i < neededCount && pool.length > 0; i++) {
+                const picked = pool.splice(pickCandidateIndex(pool, task, lastDrawMaps), 1)[0];
+                assigned.push({ ...picked, isManual: false });
+              }
+              plan.set(task.id, assigned);
+            });
+
+            // 揭曉順序：一般工作先、辛苦工作壓軸
+            const revealOrder = [...activeTasks.value].sort((a, b) => {
               if (!a.isHeavy && b.isHeavy) return -1;
               if (a.isHeavy && !b.isHeavy) return 1;
               return 0;
             });
-
-            const totalTasksCount = taskExecutionOrder.length;
+            const totalTasksCount = revealOrder.length;
             const delayPerTaskMs = Math.max(200, (drawDuration.value * 1000) / totalTasksCount);
 
             for (let index = 0; index < totalTasksCount; index++) {
-              const task = taskExecutionOrder[index];
+              const task = revealOrder[index];
               const targetResItem = currentResults.value.find(r => r.taskId === task.id);
               if (!targetResItem) continue;
               activeDrawingTaskId.value = task.id;
@@ -2523,15 +2672,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
                 await new Promise(resolve => setTimeout(resolve, delayPerTaskMs));
               }
 
-              const assigned = [...(targetResItem.assignedMembers || [])];
-              const neededCount = Math.max(0, task.count - assigned.length);
-
-              for (let i = 0; i < neededCount && pool.length > 0; i++) {
-                const picked = pool.splice(pickCandidateIndex(pool, task, lastDrawMaps), 1)[0];
-                assigned.push({ ...picked, isManual: false });
-              }
-
-              targetResItem.assignedMembers = assigned;
+              targetResItem.assignedMembers = plan.get(task.id) || targetResItem.assignedMembers;
               targetResItem.isDrawn = true;
             }
 
@@ -2643,7 +2784,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
               timestamp: source.timestamp || '歷史紀錄',
               totalPresent: source.totalPresent || 0,
               results: prepareExportTaskList(source.results, exportSortMode.value),
-              exemptMembers: getSortedHistoryMembers(source.exemptMembers || []),
+              exemptMembers: [],
+              benchedMembers: getSortedHistoryMembers(source.exemptMembers || []),
               fileSuffix: source.timestamp ? source.timestamp.replace(/[\\/:*?"<>|\s]+/g, '_') : getLocalDateStamp()
             };
           }
@@ -2653,13 +2795,18 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             totalPresent: presentMembers.value.length,
             results: prepareExportTaskList(displayTaskCards.value, exportSortMode.value),
             exemptMembers: [...exemptDisplayList.value],
+            benchedMembers: [...benchedMembers.value],
             fileSuffix: getLocalDateStamp()
           };
         };
 
         const getExportExemptNames = (payload) => {
           if (!payload.exemptMembers || payload.exemptMembers.length === 0) return '無';
-          return payload.exemptMembers.map(m => (m.seatNo ? `${m.seatNo}號 ` : '') + m.name).join('、');
+          return namesOf(payload.exemptMembers);
+        };
+        const getExportBenchedNames = (payload) => {
+          if (!payload.benchedMembers || payload.benchedMembers.length === 0) return '無';
+          return namesOf(payload.benchedMembers);
         };
 
         const buildExportHtml = (payload) => {
@@ -2684,9 +2831,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             rows.push(`<tr>${taskCells[i]}${taskCells[i + 1] || '<td class="task-cell empty"></td>'}</tr>`);
           }
 
-          const exemptHtml = payload.exemptMembers.length > 0
+          const exemptHtml = (payload.exemptMembers.length > 0
             ? `<div class="exempt-box"><strong>✨ 免掃地成員：</strong>${escapeHtml(getExportExemptNames(payload))}</div>`
-            : '';
+            : '') + ((payload.benchedMembers || []).length > 0
+            ? `<div class="exempt-box"><strong>輪空成員：</strong>${escapeHtml(getExportBenchedNames(payload))}</div>`
+            : '');
 
           return `
             <div class="export-sheet">
@@ -2771,6 +2920,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           if (payload.exemptMembers.length > 0) {
             text += `\n✨ 免掃地成員：${getExportExemptNames(payload)}\n`;
           }
+          if ((payload.benchedMembers || []).length > 0) {
+            text += `\n輪空成員：${getExportBenchedNames(payload)}\n`;
+          }
 
           text += `-------------------------------\n`;
           text += `來自 掃地工作小幫手`;
@@ -2819,7 +2971,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
             const renderHeight = imgHeight * ratio;
             const x = (pageWidth - renderWidth) / 2;
             const y = (pageHeight - renderHeight) / 2;
-            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight);
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.82), 'JPEG', x, y, renderWidth, renderHeight);
             pdf.save(`本班掃地工作分配表_${payload.fileSuffix}.pdf`);
             showToast('已匯出 PDF 檔案！', '📄');
           }).catch((err) => {
@@ -2850,6 +3002,10 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           if (payload.exemptMembers.length > 0) {
             wsData.push([]);
             wsData.push(['✨ 免掃地成員', '', '', '', '', getExportExemptNames(payload)]);
+          }
+          if ((payload.benchedMembers || []).length > 0) {
+            wsData.push([]);
+            wsData.push(['輪空成員', '', '', '', '', getExportBenchedNames(payload)]);
           }
 
           const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -3059,6 +3215,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
               if (!data || typeof data !== 'object' || (!Array.isArray(data.members) && !Array.isArray(data.tasks))) {
                 throw new Error('備份檔缺少 members / tasks');
               }
+              const incomingMembers = Array.isArray(data.members) ? data.members.length : members.value.length;
+              const incomingTasks = Array.isArray(data.tasks) ? data.tasks.length : tasks.value.length;
+              if (!confirm(`匯入備份會「取代」目前的資料：\n\n目前：${members.value.length} 位成員、${tasks.value.length} 項工作、${historyLogs.value.length} 筆歷史紀錄\n備份檔：${incomingMembers} 位成員、${incomingTasks} 項工作、${Array.isArray(data.historyLogs) ? data.historyLogs.length : '（不含）'}${Array.isArray(data.historyLogs) ? ' 筆歷史紀錄' : '歷史紀錄'}\n\n此操作無法復原，建議先下載目前的備份。確定要匯入嗎？`)) return;
               clearUndoStack();
               if (Array.isArray(data.members)) members.value = data.members;
               if (Array.isArray(data.tasks)) tasks.value = data.tasks;
@@ -3157,6 +3316,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           downloadExcelTemplate,
           downloadCurrentTasksExcel,
           importExcelTemplate,
+          importReport,
 
           // Modal & Assign
           manualAssignModal,
@@ -3191,7 +3351,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
           displayTaskCards,
           exemptMembers,
           exemptDisplayList,
-          exemptDisplayListNames,
+          namesOf,
+          benchedMembers,
+          drawFilledAll,
+          drawFilledCount,
+          drawNeededCount,
           formattedExportTaskList,
           drawTimestamp,
           hasDrawRun,
