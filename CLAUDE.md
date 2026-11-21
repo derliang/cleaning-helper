@@ -16,3 +16,7 @@
 - **新增網站會用到的檔案（頁面、圖片、`vendor/` 等）時，必須同步加進該 workflow 的 `Stage site files`**，否則部署會被參照檢查擋下、網站維持舊版。
 - 公開網址 `https://derliang.github.io/cleaning-helper/` 不得改變；不得把 Pages 來源改回「從分支發布」。合併後要親自開正式網址驗證。
 - 完整規範見 teacher-hub 的 [docs/PUBLISHING.md](https://github.com/derliang/teacher-hub/blob/main/docs/PUBLISHING.md) 第 6 節。
+
+## 去識別化（使用者 2026-11-19 硬規則）
+
+- 任何檔案、程式碼、測試資料、文件、commit 訊息、PR 說明，一律不得出現作者的真實中文姓名或所屬學校名稱；署名只用公開代號 derliang，學校一律寫「○○中學」。commit 作者名一律用 derliang。寫入前自查，違者退回。
