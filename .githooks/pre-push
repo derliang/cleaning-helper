@@ -1,0 +1,13 @@
+#!/bin/sh
+# 本機 CI：push 前跑 smoke 與 regression 兩支端對端測試（約 20 秒，需 Chrome 與網路），沒過就擋下。
+# layout、contrast、functional 較慢，license 有既有紅燈（授權頁缺必要條文，另案），都手動跑。
+# 緊急略過（環境壞、非測試失敗才用）：SKIP_PRE_PUSH=1 加在 push 指令前
+[ "$SKIP_PRE_PUSH" = "1" ] && { echo "[pre-push] 略過"; exit 0; }
+cd "$(git rev-parse --show-toplevel)" || exit 1
+# git 帶入的 GIT_* 變數不清掉，測試若動到 git 會操作到這個 repo
+for v in $(env | sed -n 's/^\(GIT_[A-Za-z_]*\)=.*/\1/p'); do unset "$v"; done
+for t in smoke regression; do
+  echo "[pre-push] $t ..."
+  node "tests/e2e/$t.test.js" || { echo "[pre-push] $t 沒過，已擋下 push。" >&2; exit 1; }
+done
+echo "[pre-push] 通過"
