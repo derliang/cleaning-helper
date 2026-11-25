@@ -20,3 +20,9 @@
 ## 去識別化（使用者 2026-11-19 硬規則）
 
 - 任何檔案、程式碼、測試資料、文件、commit 訊息、PR 說明，一律不得出現作者的真實中文姓名或所屬學校名稱；署名只用公開代號 derliang，學校一律寫「○○中學」。commit 作者名一律用 derliang。寫入前自查，違者退回。
+
+## 本機 CI（pre-push）
+
+- `.githooks/pre-push` 在 push 前跑 `tests/e2e/smoke.test.js` 與 `regression.test.js`（約 20 秒，需 Chrome 與網路），沒過就擋下 push，不要用 `--no-verify` 繞過。
+- 本專案沒有 `package.json`，新電腦第一次要手動啟用一次：`git config core.hooksPath .githooks`。
+- layout、contrast、functional、license 較慢或有既有紅燈（license：授權頁缺必要條文，另案處理），改動畫面或授權頁時手動跑，指令見 `tests/e2e/README.md`。
